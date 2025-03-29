@@ -109,7 +109,8 @@
 # So we need to find a way utilize this data to our advantage.
 # certain factors affect these hidden bots trades, but trades done on previous iterations do not affect current iteration trades (admin said this)
 # Current iter order book data probably affect bot trades, so we need to find a way to predict the trades of the hidden bots.
-
+# Todo 2: visualizing the exectued trades of hidden bots might help us figuring out the true fair price of each asset per iteration (since bots know the fair price)
+# Also, a visualizing the histogram of bid ask orders might be useful
 
 
 
