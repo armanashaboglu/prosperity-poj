@@ -5,7 +5,7 @@ ROUND 0 (tutorial):
 
  ARCHITECTURE OVERVIEW:
  --------------------
-The code uses an object-oriented design with an inheritance hierarchy:
+The code uses an object-oriented design with an inheritance hierarchy (inspired from jmerle's repo):
 - Base Strategy class: Defines common operations for all strategies
  - MarketMakingStrategy: Implements sophisticated market-making logic with position management
  - Product-specific strategies: Implement custom fair value calculations for each product
