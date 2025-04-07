@@ -20,4 +20,4 @@ Our goal is to develop profitable and robust trading algorithms by leveraging da
 *   `notebooks&analysis/`: Jupyter notebooks for data analysis, visualization, strategy experimentation, and results exploration.
 *   `requirements.txt`: Lists the Python dependencies required for this project.
 
-*Last Updated: 03/04/2025*
+*Last Updated: 07/04/2025*
