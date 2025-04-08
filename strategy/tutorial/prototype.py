@@ -117,7 +117,7 @@ from typing import Any, Dict, List
 from abc import abstractmethod
 from collections import deque
 
-from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState, ConversionObservation
+from datamodel import Listing, Observation, OrderDepth, UserId, TradingState, Order, Symbol, Trade, ProsperityEncoder
 
 
 class Logger:
