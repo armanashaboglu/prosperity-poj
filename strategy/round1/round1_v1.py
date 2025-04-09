@@ -33,19 +33,12 @@ import json
 from typing import Any, Dict, List, Tuple
 from abc import abstractmethod
 from collections import deque
-import jsonpickle # Use jsonpickle for state serialization
 import math
 
-# Ensure datamodel contents are accessible (adjust import if needed based on project structure)
-# If datamodel.py is in the same directory or a standard location:
+
 from datamodel import Listing, Observation, OrderDepth, UserId, TradingState, Order, Symbol, Trade, ProsperityEncoder
-# If datamodel.py is in the parent directory (strategy/)
-# import sys
-# sys.path.append('..')
-# from datamodel import OrderDepth, UserId, TradingState, Order, Symbol
 
 
-# --- Logger Class (Use exact prototype version) ---
 class Logger:
     def __init__(self) -> None:
         self.logs = ""

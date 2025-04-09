@@ -10,7 +10,7 @@ from .log_parser import parse_log_file # Use relative import
 from .historical_data_loader import load_historical_data # Added import for historical data
 
 # --- Configuration ---
-LOG_FILE_PATH = 'C:/Users/Admin/Downloads/2c08f682-b44d-4d7e-9478-220ede9ecb8f.log' # Or make this configurable
+LOG_FILE_PATH = 'C:/Users/Admin/projects/prosperity-poj/backtests/2025-04-09_21-18-31.log' # Or make this configurable
 HISTORICAL_DATA_DIR = 'C:/Users/Admin/Downloads/round-1-island-data-bottle/round-1-island-data-bottle' # Added path for historical data
 ROUND_1_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK"] # Added list of R1 products
 POSITION_LIMITS = { # Hardcode for now, ideally load dynamically later
