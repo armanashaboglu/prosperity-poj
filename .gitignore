@@ -1,0 +1,18 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore backtest logs and directories
+backtests/
+
+# Ignore temporary optimizer directories and their contents
+temp_optimizer*/
+
+# Ignore database files
+*.db
+
+# Ignore log files in general (can be made more specific if needed)
+*.log
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/ 
