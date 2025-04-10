@@ -148,15 +148,17 @@ class Product:
 
 # --- Parameters ---
 PARAMS = {
-    "SQUID_INK": { # Params for the new RSI strategy
-        "rsi_period": 37,
-        "rsi_overbought": 65,
-        "rsi_oversold": 28,
-        "rsi_trade_size": 18, # Size of trade to place when signal triggers
+    "SQUID_INK": {
+        # --- NEW: RSI Mean Reversion Parameters ---
+        "rsi_window": 106,           # Lookback period for RSI
+        "rsi_overbought": 52,     # RSI level considered overbought
+        "rsi_oversold": 41,       # RSI level considered oversold
+        # Trading max capacity when signal triggers
     },
     "RAINFOREST_RESIN": { # Params for V3 Resin Strategy
         "fair_value": 10000,
     },
+    # KELP uses the PrototypeKelpStrategy which doesn't read from PARAMS
 }
 
 # --- Base Strategy (Generic - kept for RSI) ---
@@ -420,7 +422,6 @@ class V3RainforestResinStrategy(V3MarketMakingStrategy):
         logger.print(f"{self.symbol} (V3 Logic) Phase 2 DONE - Placed Make orders at {make_bid_price}/{make_ask_price}")
 # --- End V3 Strategy Classes ---
 
-
 # --- Prototype Market Making Strategy (For Kelp) ---
 class PrototypeMarketMakingStrategy(Strategy):
     def __init__(self, symbol: str, position_limit: int) -> None:
@@ -522,19 +523,6 @@ class PrototypeMarketMakingStrategy(Strategy):
             to_buy -= quantity
             logger.print(f"{self.symbol} (Proto Logic) Soft Liq Buy {quantity}x{liq_price:.0f}")
 
-        if to_sell > 0 and hard_liquidate:
-            quantity = to_sell // 2
-            self.sell(true_value, quantity) # Hard liq sell at TV
-            to_sell -= quantity
-            logger.print(f"{self.symbol} (Proto Logic) Hard Liq Sell {quantity}x{true_value:.0f}")
-        elif to_sell > 0 and soft_liquidate: # Stuck long, need to sell
-            quantity = to_sell // 2
-            # Prototype sells at TV + 2 for soft liq when long (maybe typo in proto, but replicating)
-            liq_price = true_value + 2
-            self.sell(liq_price, quantity)
-            to_sell -= quantity
-            logger.print(f"{self.symbol} (Proto Logic) Soft Liq Sell {quantity}x{liq_price:.0f}")
-
 
         # Phase 3: Make orders
         if to_buy > 0:
@@ -587,95 +575,154 @@ class PrototypeKelpStrategy(PrototypeMarketMakingStrategy):
 
         return round(final_value) if final_value is not None else None
 
-# --- Squid Ink RSI Strategy --- 
-class SquidInkRSIStrategy(Strategy):
+# --- NEW: Squid Ink RSI Strategy ---
+class SquidInkRsiStrategy(Strategy):
     def __init__(self, symbol: str, position_limit: int) -> None:
         super().__init__(symbol, position_limit)
-        self.rsi_params = PARAMS[Product.SQUID_INK]
-        self.price_history: Deque[float] = deque(maxlen=self.rsi_params["rsi_period"] + 1)
-        self.rsi_value: Optional[float] = None
+        self.params = PARAMS.get(self.symbol, {})
+        if not self.params:
+             logger.print(f"ERROR: Parameters for {self.symbol} not found in PARAMS. Using defaults.")
+             self.params = {"rsi_window": 14, "rsi_overbought": 70.0, "rsi_oversold": 30.0}
 
-    def _calculate_rsi(self) -> Optional[float]:
-        period = self.rsi_params["rsi_period"]
-        if len(self.price_history) <= period:
+        # Load RSI parameters
+        self.window = self.params.get("rsi_window", 14)
+        if self.window < 2: # RSI requires at least 2 periods for changes
+            logger.print(f"Warning: RSI window {self.window} too small, setting to 2.")
+            self.window = 2
+        self.overbought_threshold = self.params.get("rsi_overbought", 70.0)
+        self.oversold_threshold = self.params.get("rsi_oversold", 30.0)
+
+        # State variables for RSI calculation
+        # Need window + 1 prices to calculate window changes
+        self.mid_price_history: deque[float] = deque(maxlen=self.window + 1)
+        self.avg_gain: Optional[float] = None
+        self.avg_loss: Optional[float] = None
+        self.rsi_initialized: bool = False
+
+        logger.print(f"Initialized SquidInkRsiStrategy with window={self.window}, OB={self.overbought_threshold}, OS={self.oversold_threshold}")
+
+    def _calculate_rsi(self, current_mid_price: float) -> Optional[float]:
+        """Calculates RSI using Wilder's smoothing method."""
+        self.mid_price_history.append(current_mid_price)
+
+        if len(self.mid_price_history) < self.window + 1:
+            # Need enough data points to calculate initial average gain/loss
             return None
 
-        prices = np.array(list(self.price_history))
-        deltas = np.diff(prices)
+        prices = list(self.mid_price_history)
+        changes = [prices[i] - prices[i-1] for i in range(1, len(prices))] # len(prices) = window + 1, so len(changes) = window
 
-        if len(deltas) < period:
-             return None
+        # Separate gains and losses
+        gains = [max(change, 0) for change in changes]
+        losses = [abs(min(change, 0)) for change in changes]
 
-        relevant_deltas = deltas[-period:]
+        if not self.rsi_initialized:
+            # First calculation: Use simple average over the window
+            self.avg_gain = sum(gains) / self.window
+            self.avg_loss = sum(losses) / self.window
+            self.rsi_initialized = True
+            logger.print(f" {self.symbol} (RSI): Initialized avg_gain={self.avg_gain:.4f}, avg_loss={self.avg_loss:.4f}")
+        else:
+            # Subsequent calculations: Use Wilder's smoothing
+            current_gain = gains[-1]
+            current_loss = losses[-1]
+            self.avg_gain = ((self.avg_gain * (self.window - 1)) + current_gain) / self.window
+            self.avg_loss = ((self.avg_loss * (self.window - 1)) + current_loss) / self.window
 
-        gains = relevant_deltas[relevant_deltas > 0].sum()
-        losses = -relevant_deltas[relevant_deltas < 0].sum()
-
-        avg_gain = gains / period
-        avg_loss = losses / period
-
-        if avg_loss == 0:
-            return 100.0 if avg_gain > 0 else 50.0
-
-        rs = avg_gain / avg_loss
-        rsi = 100.0 - (100.0 / (1.0 + rs))
-        return rsi
+        if self.avg_loss == 0:
+             # Avoid division by zero; RSI is 100 if avg_loss is 0
+             return 100.0
+        else:
+            rs = self.avg_gain / self.avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            return rsi
 
     def act(self, state: TradingState) -> None:
-        if self.symbol not in state.order_depths: return
-        order_depth = state.order_depths[self.symbol]
-        buy_orders = order_depth.buy_orders if isinstance(order_depth.buy_orders, dict) else {}
-        sell_orders = order_depth.sell_orders if isinstance(order_depth.sell_orders, dict) else {}
+        order_depth = state.order_depths.get(self.symbol)
+        position = state.position.get(self.symbol, 0)
 
-        best_bid = max(buy_orders.keys()) if buy_orders else None
-        best_ask = min(sell_orders.keys()) if sell_orders else None
+        if not order_depth:
+            logger.print(f" {self.symbol} (RSI): No order depth data.")
+            return
 
-        current_price = None
-        if best_bid is not None and best_ask is not None: current_price = (best_bid + best_ask) / 2.0
-        elif best_bid is not None: current_price = float(best_bid)
-        elif best_ask is not None: current_price = float(best_ask)
+        # --- 1. Calculate Current Mid-Price --- #
+        best_bid_price = max(order_depth.buy_orders.keys()) if order_depth.buy_orders else None
+        best_ask_price = min(order_depth.sell_orders.keys()) if order_depth.sell_orders else None
 
-        if current_price is None:
-             logger.print(f"Cannot determine price for {self.symbol}, skipping RSI step.")
-             return
+        if best_bid_price is None or best_ask_price is None:
+            logger.print(f"{self.symbol} (RSI): Missing BBO, cannot calculate mid-price or RSI.")
+            return
 
-        self.price_history.append(current_price)
-        self.rsi_value = self._calculate_rsi()
+        current_mid_price = (best_bid_price + best_ask_price) / 2.0
 
-        if self.rsi_value is not None:
-            logger.print(f"{self.symbol} - RSI({self.rsi_params['rsi_period']}): {self.rsi_value:.2f}")
-            position = state.position.get(self.symbol, 0)
-            buy_capacity = self.position_limit - position
-            sell_capacity = self.position_limit + position
-            trade_size = self.rsi_params["rsi_trade_size"]
+        # --- 2. Calculate RSI --- #
+        rsi_value = self._calculate_rsi(current_mid_price)
 
-            overbought_level = self.rsi_params["rsi_overbought"]
-            oversold_level = self.rsi_params["rsi_oversold"]
+        if rsi_value is None:
+            logger.print(f" {self.symbol} (RSI): Not enough history to calculate RSI.")
+            return # Wait for more data
+        else:
+            logger.print(f" {self.symbol} (RSI): Mid={current_mid_price:.2f}, RSI({self.window})={rsi_value:.2f}")
 
-            if self.rsi_value > overbought_level and sell_capacity > 0 and best_bid is not None:
-                qty = min(trade_size, sell_capacity)
-                logger.print(f"{self.symbol} RSI Overbought ({self.rsi_value:.1f} > {overbought_level}), Selling {qty} at best bid {best_bid}")
-                self._place_sell_order(best_bid, qty)
+        # --- 3. Generate Signal & Trade --- #
+        to_buy_capacity = self.position_limit - position
+        to_sell_capacity = self.position_limit + position
 
-            elif self.rsi_value < oversold_level and buy_capacity > 0 and best_ask is not None:
-                qty = min(trade_size, buy_capacity)
-                logger.print(f"{self.symbol} RSI Oversold ({self.rsi_value:.1f} < {oversold_level}), Buying {qty} at best ask {best_ask}")
-                self._place_buy_order(best_ask, qty)
+        # Signal: Sell when RSI is overbought
+        if rsi_value > self.overbought_threshold and to_sell_capacity > 0:
+            size_to_sell = to_sell_capacity # Sell max capacity
+            aggressive_sell_price = best_bid_price - 1 # Place 1 tick below best bid
+            logger.print(f" {self.symbol} -> RSI SELL Signal (RSI: {rsi_value:.2f} > {self.overbought_threshold}) Max Qty: {size_to_sell} @ Aggressive Price {aggressive_sell_price}")
+            self._place_sell_order(aggressive_sell_price, size_to_sell)
+
+        # Signal: Buy when RSI is oversold
+        elif rsi_value < self.oversold_threshold and to_buy_capacity > 0:
+            size_to_buy = to_buy_capacity # Buy max capacity
+            aggressive_buy_price = best_ask_price + 1 # Place 1 tick above best ask
+            logger.print(f" {self.symbol} -> RSI BUY Signal (RSI: {rsi_value:.2f} < {self.oversold_threshold}) Max Qty: {size_to_buy} @ Aggressive Price {aggressive_buy_price}")
+            self._place_buy_order(aggressive_buy_price, size_to_buy)
 
     def save(self) -> dict:
-        return {"price_history": list(self.price_history), "rsi_value": self.rsi_value}
+        # Save strategy state - include RSI state
+        return {
+            "mid_price_history": list(self.mid_price_history),
+            "avg_gain": self.avg_gain,
+            "avg_loss": self.avg_loss,
+            "rsi_initialized": self.rsi_initialized
+        }
 
     def load(self, data: dict) -> None:
-        if data and "price_history" in data and isinstance(data["price_history"], list):
-             loaded_history = data["price_history"]
-             maxlen = self.rsi_params["rsi_period"] + 1
-             start_index = max(0, len(loaded_history) - maxlen)
-             self.price_history.clear()
-             self.price_history.extend(loaded_history[start_index:])
-        self.rsi_value = data.get("rsi_value", None) if isinstance(data, dict) else None
+        # Load strategy state - include RSI state
+        loaded_history = data.get("mid_price_history", [])
+        if isinstance(loaded_history, list):
+             self.mid_price_history = deque(loaded_history, maxlen=self.window + 1)
+        else:
+             self.mid_price_history = deque(maxlen=self.window + 1) # Reset if invalid
+
+        self.avg_gain = data.get("avg_gain")
+        self.avg_loss = data.get("avg_loss")
+        self.rsi_initialized = data.get("rsi_initialized", False)
+
+        # Type/validity checking
+        if self.avg_gain is not None:
+            try: self.avg_gain = float(self.avg_gain)
+            except (ValueError, TypeError): self.avg_gain = None
+        if self.avg_loss is not None:
+            try: self.avg_loss = float(self.avg_loss)
+            except (ValueError, TypeError): self.avg_loss = None
+        if not isinstance(self.rsi_initialized, bool):
+             self.rsi_initialized = False
+
+        # Reset if essential state is inconsistent
+        if self.rsi_initialized and (self.avg_gain is None or self.avg_loss is None):
+            logger.print(f"Warning: RSI avg gain/loss invalid after loading for {self.symbol}. Resetting RSI calc state.")
+            self.rsi_initialized = False
+            self.avg_gain = None
+            self.avg_loss = None
+            # History might be okay, don't clear it unless needed
 
 
-# --- Trader Class --- 
+# --- Trader Class ---
 class Trader:
     def __init__(self):
         self.position_limits = {
@@ -690,11 +737,13 @@ class Trader:
             Product.KELP: PrototypeKelpStrategy(
                 Product.KELP, self.position_limits[Product.KELP]
             ),
-            Product.SQUID_INK: SquidInkRSIStrategy(
-                 Product.SQUID_INK, self.position_limits[Product.SQUID_INK]
+            # --- Use the new RSI strategy ---
+            Product.SQUID_INK: SquidInkRsiStrategy( # Use the new class
+                 Product.SQUID_INK,
+                 self.position_limits[Product.SQUID_INK]
             )
         }
-        logger.print("Trader Initialized (Fallback Strategy - Corrected)")
+        logger.print("Trader Initialized (Fallback Strategy - With RSI Squid)") # Updated log message
         logger.print(f"Using PARAMS: {json.dumps(PARAMS)}")
 
     def run(self, state: TradingState) -> tuple[Dict[Symbol, List[Order]], int, str]:
