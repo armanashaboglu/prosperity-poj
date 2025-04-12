@@ -605,7 +605,7 @@ class SquidInkRsiStrategy(Strategy):
         self.avg_loss = data.get("avg_loss")
         self.rsi_initialized = data.get("rsi_initialized", False)
 
-        # Validity checks
+        # valcheck
         if self.avg_gain is not None: 
             try: self.avg_gain = float(self.avg_gain)
             except (ValueError, TypeError): self.avg_gain = None
