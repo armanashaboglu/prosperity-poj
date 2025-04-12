@@ -246,7 +246,7 @@ logger = Logger()
 PARAMS = {
     "RAINFOREST_RESIN": {
         "fair_value": 10000,
-        # Using the dynamic MM strategy from prototype_round1.py's RainforestResinStrategy
+        
     },
     "KELP": {
         # EMA

@@ -9,36 +9,35 @@ def load_historical_data(directory_path):
     """
     Loads historical price and trade data from Excel files found in the specified directory.
 
-    Assumes filenames follow the pattern: prices_round_1_day_*.xlsx and trades_round_1_day_*.xlsx
+    Assumes filenames follow the pattern: prices_round_2_day_*.csv and trades_round_2_day_*_nn.csv
 
     Args:
         directory_path (str): The path to the directory containing the Excel files.
 
     Returns:
-        dict: A dictionary where keys are the days (-2, -1, 0) and values are
+        dict: A dictionary where keys are the days (-1, 0) and values are
               dictionaries containing 'prices' and 'trades' DataFrames for that day.
               Returns an empty dictionary if the directory doesn't exist or no files are found.
-              Example: {-2: {'prices': df_prices, 'trades': df_trades}, ...}
+              Example: {-1: {'prices': df_prices, 'trades': df_trades}, ...}
     """
     historical_data = {}
-    days = [-2, -1, 0]
+    # Round 2 data only contains days -1 and 0
+    days = [-1, 0 , 1]
 
     if not os.path.isdir(directory_path):
-        print(f"Error: Directory not found: {'C:/Users/Admin/Downloads/round-1-island-data-bottle/round-1-island-data-bottle'}")
+        # Update the default path in the error message if needed, but the function uses the passed path
+        print(f"Error: Directory not found: {directory_path}")
         return historical_data
 
-    print(f"Loading historical data from: {'C:/Users/Admin/Downloads/round-1-island-data-bottle/round-1-island-data-bottle'}")
+    print(f"Loading historical data for Round 2 from: {directory_path}")
 
     for day in days:
         day_data = {}
-        # Construct expected file paths - ADJUST patterns if filenames differ slightly
-        # Example: prices_round_1_day_(-2).xlsx, trades_round_1_day_(-2)_wn.xlsx
-        # Note: Using f-strings requires careful handling of negative numbers in filenames if not standard.
-        # We'll assume the standard format for now: day_-2, day_-1, day_0
+        # Construct expected file paths for Round 2
         day_str = str(day) # Use string representation for matching
 
-        prices_pattern = os.path.join(directory_path, f'prices_round_1_day_{day_str}.csv')
-        trades_pattern = os.path.join(directory_path, f'trades_round_1_day_{day_str}.csv') 
+        prices_pattern = os.path.join(directory_path, f'prices_round_2_day_{day_str}.csv')
+        trades_pattern = os.path.join(directory_path, f'trades_round_2_day_{day_str}_nn.csv')
 
         # Find files matching the pattern
         price_files = glob.glob(prices_pattern)
@@ -61,6 +60,7 @@ def load_historical_data(directory_path):
         if trade_files:
             trades_file_path = trade_files[0] # Take the first match
             try:
+                # Adjust separator if needed for round 2 files, assuming ';' for now
                 df_trades = pd.read_csv(trades_file_path, sep=';')
                 df_trades['day'] = day # Add day column for consistency
                 day_data['trades'] = df_trades
@@ -81,8 +81,8 @@ def load_historical_data(directory_path):
 
 # Example Usage (optional, for testing)
 if __name__ == '__main__':
-    # IMPORTANT: Replace with the ACTUAL path to your data directory
-    data_dir = 'C:/Users/Admin/Downloads/round-1-island-data-bottle/round-1-island-data-bottle'
+    # IMPORTANT: Replace with the ACTUAL path to your Round 2 data directory
+    data_dir = 'C:/Users/Admin/Downloads/round-2-island-data-bottle/round-2-island-data-bottle'
 
     loaded_data = load_historical_data(data_dir)
 

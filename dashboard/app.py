@@ -10,8 +10,8 @@ from .log_parser import parse_log_file # Use relative import
 from .historical_data_loader import load_historical_data # Added import for historical data
 
 # --- Configuration ---
-LOG_FILE_PATH = 'C:/Users/Admin/projects/prosperity-poj/backtests/2025-04-09_21-18-31.log' # Or make this configurable
-HISTORICAL_DATA_DIR = 'C:/Users/Admin/Downloads/round-1-island-data-bottle/round-1-island-data-bottle' # Added path for historical data
+LOG_FILE_PATH = 'C:/Users/Admin/Downloads/8979e4ef-51d7-452e-a75f-9e5b698d646e (1).log' # Or make this configurable
+HISTORICAL_DATA_DIR = 'C:/Users/Admin/Downloads/round-2-island-data-bottle/round-2-island-data-bottle' # Added path for historical data
 ROUND_1_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK"] # Added list of R1 products
 POSITION_LIMITS = { # Hardcode for now, ideally load dynamically later
     "KELP": 50,
@@ -261,25 +261,25 @@ def update_log_price_graphs(selected_ts):
             # --- Price Graph Logic ---
             # (Keep existing price graph logic: Bids, Asks, Mid, Fair Value, Trades, Vline)
             # Bids
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['bid_price_1'], mode='lines', name='Bid 1', line=dict(color='lightgreen')))
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['bid_price_2'], mode='lines', name='Bid 2', line=dict(color='lightgreen', dash='dot'), visible='legendonly'))
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['bid_price_3'], mode='lines', name='Bid 3', line=dict(color='lightgreen', dash='dashdot'), visible='legendonly'))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['bid_price_1'], mode='lines', name='Bid 1', line=dict(color='lightgreen')))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['bid_price_2'], mode='lines', name='Bid 2', line=dict(color='lightgreen', dash='dot'), visible='legendonly'))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['bid_price_3'], mode='lines', name='Bid 3', line=dict(color='lightgreen', dash='dashdot'), visible='legendonly'))
             # Asks
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['ask_price_1'], mode='lines', name='Ask 1', line=dict(color='lightcoral')))
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['ask_price_2'], mode='lines', name='Ask 2', line=dict(color='lightcoral', dash='dot'), visible='legendonly'))
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['ask_price_3'], mode='lines', name='Ask 3', line=dict(color='lightcoral', dash='dashdot'), visible='legendonly'))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['ask_price_1'], mode='lines', name='Ask 1', line=dict(color='lightcoral')))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['ask_price_2'], mode='lines', name='Ask 2', line=dict(color='lightcoral', dash='dot'), visible='legendonly'))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['ask_price_3'], mode='lines', name='Ask 3', line=dict(color='lightcoral', dash='dashdot'), visible='legendonly'))
             # Mid Price
-            fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data['mid_price'], mode='lines', name='Mid Price', line=dict(color='lightblue')))
+            fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data['mid_price'], mode='lines', name='Mid Price', line=dict(color='lightblue')))
             # Fair Value
             if fair_value_col_name in product_price_data.columns and not product_price_data[fair_value_col_name].isnull().all():
-                fig_price.add_trace(go.Scattergl(x=product_price_data['timestamp'], y=product_price_data[fair_value_col_name], mode='lines', name='Fair Value (Algo)', line=dict(color='orange', dash='longdash'), visible='legendonly'))
+                fig_price.add_trace(go.Scatter(x=product_price_data['timestamp'], y=product_price_data[fair_value_col_name], mode='lines', name='Fair Value (Algo)', line=dict(color='orange', dash='longdash'), visible='legendonly'))
             # Trades
             own_buy = product_trade_data[product_trade_data['buyer'] == 'SUBMISSION']
             own_sell = product_trade_data[product_trade_data['seller'] == 'SUBMISSION']
             market_trades = product_trade_data[(product_trade_data['buyer'] != 'SUBMISSION') & (product_trade_data['seller'] != 'SUBMISSION')]
-            fig_price.add_trace(go.Scattergl(x=own_buy['timestamp'], y=own_buy['price'], mode='markers', name='Own Buy', marker=dict(color='cyan', symbol='triangle-up', size=8), visible='legendonly', hovertemplate="Buy Qty: %{customdata}<extra></extra>", customdata=own_buy['quantity']))
-            fig_price.add_trace(go.Scattergl(x=own_sell['timestamp'], y=own_sell['price'], mode='markers', name='Own Sell', marker=dict(color='yellow', symbol='triangle-down', size=8), visible='legendonly', hovertemplate="Sell Qty: %{customdata}<extra></extra>", customdata=own_sell['quantity']))
-            fig_price.add_trace(go.Scattergl(x=market_trades['timestamp'], y=market_trades['price'], mode='markers', name='Market Trades', marker=dict(color='magenta', symbol='x', size=6), visible='legendonly', hovertemplate="Market Qty: %{customdata}<extra></extra>", customdata=market_trades['quantity']))
+            fig_price.add_trace(go.Scatter(x=own_buy['timestamp'], y=own_buy['price'], mode='markers', name='Own Buy', marker=dict(color='cyan', symbol='triangle-up', size=8), visible='legendonly', hovertemplate="Buy Qty: %{customdata}<extra></extra>", customdata=own_buy['quantity']))
+            fig_price.add_trace(go.Scatter(x=own_sell['timestamp'], y=own_sell['price'], mode='markers', name='Own Sell', marker=dict(color='yellow', symbol='triangle-down', size=8), visible='legendonly', hovertemplate="Sell Qty: %{customdata}<extra></extra>", customdata=own_sell['quantity']))
+            fig_price.add_trace(go.Scatter(x=market_trades['timestamp'], y=market_trades['price'], mode='markers', name='Market Trades', marker=dict(color='magenta', symbol='x', size=6), visible='legendonly', hovertemplate="Market Qty: %{customdata}<extra></extra>", customdata=market_trades['quantity']))
             # Vline
             fig_price.add_vline(x=selected_ts, line_width=1, line_dash="dash", line_color="grey")
             fig_price.update_layout(
@@ -294,7 +294,7 @@ def update_log_price_graphs(selected_ts):
                 # Handle potential NaNs if calculation results in them
                 product_price_data['spread'] = product_price_data['spread'].fillna(method='ffill').fillna(method='bfill') # Forward fill then back fill
 
-                fig_spread.add_trace(go.Scattergl(
+                fig_spread.add_trace(go.Scatter(
                     x=product_price_data['timestamp'],
                     y=product_price_data['spread'],
                     mode='lines', name='Bid-Ask Spread', line=dict(color='lightyellow')
@@ -372,7 +372,7 @@ def update_position_graph(selected_ts):
         # Avoid division by zero if limit is 0 for some reason
         if limit != 0:
             position_pct = (positions / limit) * 100
-            fig.add_trace(go.Scattergl(
+            fig.add_trace(go.Scatter(
                 x=lambda_state_df['timestamp'],
                 y=position_pct,
                 mode='lines',
@@ -422,7 +422,7 @@ def update_pnl_graph(selected_ts):
     products_in_log = activities_df['product'].unique()
     for product in products_in_log:
         if product in pnl_data.columns: # Ensure product column exists after pivot
-             fig.add_trace(go.Scattergl(
+             fig.add_trace(go.Scatter(
                  x=pnl_data['timestamp'],
                  y=pnl_data[product],
                  mode='lines',
@@ -432,7 +432,7 @@ def update_pnl_graph(selected_ts):
 
     # Plot Total PnL (visible by default)
     if total_pnl_col in pnl_data.columns:
-        fig.add_trace(go.Scattergl(
+        fig.add_trace(go.Scatter(
             x=pnl_data['timestamp'],
             y=pnl_data[total_pnl_col],
             mode='lines',
@@ -730,68 +730,128 @@ def update_historical_graphs(selected_day):
         product_trades = pd.DataFrame() # Default to empty
         if trades_df is not None and 'symbol' in trades_df.columns: # Ensure symbol exists before filtering
              product_trades = trades_df[trades_df['symbol'] == product].copy()
+             # Clean trades timestamp and price
+             if not product_trades.empty:
+                 product_trades['timestamp'] = pd.to_numeric(product_trades['timestamp'], errors='coerce')
+                 product_trades['price'] = pd.to_numeric(product_trades['price'], errors='coerce')
+                 product_trades.dropna(subset=['timestamp', 'price'], inplace=True)
+
 
         # --- Create Price Graph ---
         fig_price = go.Figure()
-        # (Keep existing price graph logic: Bids, Asks, Mid Prices, Market Trades)
-        # Bids & Asks (Level 1 visible, 2 & 3 hidden)
-        for i in range(1, 4):
-            bid_col_p = f'bid_price_{i}'
-            ask_col_p = f'ask_price_{i}'
-            if bid_col_p in product_prices.columns:
-                 fig_price.add_trace(go.Scattergl(x=product_prices['timestamp'], y=product_prices[bid_col_p], mode='lines', name=f'Bid {i}', line=dict(color='lightgreen', dash=('solid' if i == 1 else ('dot' if i==2 else 'dashdot'))), visible=(True if i == 1 else 'legendonly')))
-            if ask_col_p in product_prices.columns:
-                 fig_price.add_trace(go.Scattergl(x=product_prices['timestamp'], y=product_prices[ask_col_p], mode='lines', name=f'Ask {i}', line=dict(color='lightcoral', dash=('solid' if i == 1 else ('dot' if i==2 else 'dashdot'))), visible=(True if i == 1 else 'legendonly')))
-        # Mid Prices
-        if 'standard_mid_price' in product_prices.columns:
-            fig_price.add_trace(go.Scattergl(x=product_prices['timestamp'], y=product_prices['standard_mid_price'], mode='lines', name='Mid Price (B1/A1)', line=dict(color='lightblue')))
-        if 'popular_mid_price' in product_prices.columns:
-             fig_price.add_trace(go.Scattergl(x=product_prices['timestamp'], y=product_prices['popular_mid_price'], mode='lines', name='Mid Price (Popular Vol)', line=dict(color='yellow', dash='dash'), visible='legendonly'))
-        # Market Trades
-        if not product_trades.empty and 'price' in product_trades.columns:
-            fig_price.add_trace(go.Scattergl(x=product_trades['timestamp'], y=product_trades['price'], mode='markers', name='Market Trades', marker=dict(color='magenta', symbol='x', size=6), hovertemplate="Trade Qty: %{customdata}<extra></extra>", customdata=product_trades['quantity']))
-        fig_price.update_layout(
-            title=f'{product} - Historical Prices & Trades (Day {selected_day})',
-            xaxis_title='Timestamp', yaxis_title='Price',
-            hovermode='x unified', template='plotly_dark', legend_title_text='Price Levels'
-        )
-
-        # --- Create Spread Graph ---
         fig_spread = go.Figure()
-        if 'spread' in product_prices.columns and not product_prices['spread'].isnull().all():
-            fig_spread.add_trace(go.Scattergl(
-                x=product_prices['timestamp'], y=product_prices['spread'],
-                mode='lines', name='Bid-Ask Spread', line=dict(color='lightyellow')
-            ))
-            fig_spread.update_layout(
-                title=f'{product} - Historical Bid-Ask Spread (Day {selected_day})',
-                xaxis_title='Timestamp', yaxis_title='Spread (Ask1 - Bid1)',
-                hovermode='x unified', template='plotly_dark'
-            )
-        else:
-             fig_spread.update_layout(title=f'{product} Spread (Missing Data)', template='plotly_dark')
-
-
-        # --- Create Volume Histogram ---
         fig_hist = go.Figure()
-        # (Keep existing histogram logic)
-        volume_cols = [f'{side}_volume_{i}' for side in ['bid', 'ask'] for i in range(1, 4)]
-        colors = px.colors.qualitative.Plotly
-        for i, col in enumerate(volume_cols):
-            if col in product_prices.columns:
-                 valid_volumes = product_prices[col].dropna()
-                 valid_volumes = valid_volumes[valid_volumes > 0]
-                 if not valid_volumes.empty:
-                    fig_hist.add_trace(go.Histogram(x=valid_volumes, name=col.replace('_', ' ').title(), marker_color=colors[i % len(colors)], opacity=0.75))
-        fig_hist.update_layout(
-            title=f'{product} - Historical Volume Distribution (Day {selected_day})',
-            xaxis_title='Volume per Price Level', yaxis_title='Frequency (Count of Timestamps)',
-            barmode='overlay', template='plotly_dark', legend_title_text='Volume Levels'
-        )
-        fig_hist.update_traces(opacity=0.75)
+
+        # Check if there is any price data for this product on this day
+        if product_prices.empty:
+            print(f"Warning: No historical price data found for product '{product}' on day {selected_day}. Skipping graphs.")
+            # Create placeholder graphs
+            fig_price.update_layout(title=f'{product} - No Historical Price Data (Day {selected_day})', template='plotly_dark')
+            fig_spread.update_layout(title=f'{product} - No Spread Data (Day {selected_day})', template='plotly_dark')
+            fig_hist.update_layout(title=f'{product} - No Volume Data (Day {selected_day})', template='plotly_dark')
+        else:
+            # --- Clean Price Data ---
+            # Ensure timestamp is numeric and drop NaNs
+            product_prices['timestamp'] = pd.to_numeric(product_prices['timestamp'], errors='coerce')
+            product_prices.dropna(subset=['timestamp'], inplace=True)
+            if product_prices.empty: # Check again after dropping NaN timestamps
+                 print(f"Warning: No valid timestamps for product '{product}' on day {selected_day} after cleaning. Skipping graphs.")
+                 fig_price.update_layout(title=f'{product} - No Valid Timestamps (Day {selected_day})', template='plotly_dark')
+                 fig_spread.update_layout(title=f'{product} - No Valid Timestamps (Day {selected_day})', template='plotly_dark')
+                 fig_hist.update_layout(title=f'{product} - No Valid Timestamps (Day {selected_day})', template='plotly_dark')
+                 # Add these placeholder graphs to children and continue loop
+                 graph_children.append(html.Div([
+                     html.Div(dcc.Graph(figure=fig_price), style={'width': '100%', 'marginBottom': '5px'}),
+                     html.Div(dcc.Graph(figure=fig_spread), style={'width': '100%', 'marginBottom': '5px'}),
+                     html.Div(dcc.Graph(figure=fig_hist), style={'width': '100%'})
+                 ], style={'marginBottom': '20px', 'border': '1px solid #555', 'padding': '10px'}))
+                 continue # Skip to the next product
 
 
-        # --- Add graphs to the children list (stacked layout) ---
+            # Price Graph Logic
+            # Bids & Asks (Level 1 visible, 2 & 3 hidden) - Clean data before plotting each
+            for i in range(1, 4):
+                bid_col_p = f'bid_price_{i}'
+                ask_col_p = f'ask_price_{i}'
+                if bid_col_p in product_prices.columns:
+                     bid_data = pd.to_numeric(product_prices[bid_col_p], errors='coerce').ffill().bfill()
+                     if not bid_data.isnull().all():
+                         fig_price.add_trace(go.Scatter(x=product_prices['timestamp'], y=bid_data, mode='lines', name=f'Bid {i}', line=dict(color='lightgreen', dash=('solid' if i == 1 else ('dot' if i==2 else 'dashdot'))), visible=(True if i == 1 else 'legendonly')))
+                if ask_col_p in product_prices.columns:
+                     ask_data = pd.to_numeric(product_prices[ask_col_p], errors='coerce').ffill().bfill()
+                     if not ask_data.isnull().all():
+                         fig_price.add_trace(go.Scatter(x=product_prices['timestamp'], y=ask_data, mode='lines', name=f'Ask {i}', line=dict(color='lightcoral', dash=('solid' if i == 1 else ('dot' if i==2 else 'dashdot'))), visible=(True if i == 1 else 'legendonly')))
+
+            # Mid Prices - Clean data before plotting
+            mid_price_col = 'standard_mid_price'
+            if mid_price_col in product_prices.columns:
+                 mid_price_data = pd.to_numeric(product_prices[mid_price_col], errors='coerce').ffill().bfill()
+                 if not mid_price_data.isnull().all():
+                     fig_price.add_trace(go.Scatter(x=product_prices['timestamp'], y=mid_price_data, mode='lines', name='Mid Price (B1/A1)', line=dict(color='lightblue')))
+
+            pop_mid_price_col = 'popular_mid_price'
+            if pop_mid_price_col in product_prices.columns:
+                 pop_mid_price_data = pd.to_numeric(product_prices[pop_mid_price_col], errors='coerce').ffill().bfill()
+                 if not pop_mid_price_data.isnull().all():
+                     fig_price.add_trace(go.Scatter(x=product_prices['timestamp'], y=pop_mid_price_data, mode='lines', name='Mid Price (Popular Vol)', line=dict(color='yellow', dash='dash'), visible='legendonly'))
+
+            # Market Trades - Already cleaned earlier, keep as Scattergl for markers if desired, or change too
+            if not product_trades.empty:
+                fig_price.add_trace(go.Scatter(x=product_trades['timestamp'], y=product_trades['price'], mode='markers', name='Market Trades', marker=dict(color='magenta', symbol='x', size=6), hovertemplate="Trade Qty: %{customdata}<extra></extra>", customdata=product_trades['quantity']))
+
+            fig_price.update_layout(
+                title=f'{product} - Historical Prices & Trades (Day {selected_day})',
+                xaxis_title='Timestamp', yaxis_title='Price',
+                hovermode='x unified', template='plotly_dark', legend_title_text='Price Levels'
+            )
+
+            # Spread Graph Logic - Clean data before plotting
+            spread_col = 'spread'
+            if spread_col in product_prices.columns:
+                 spread_data = pd.to_numeric(product_prices[spread_col], errors='coerce').ffill().bfill()
+                 if not spread_data.isnull().all():
+                     fig_spread.add_trace(go.Scatter(
+                         x=product_prices['timestamp'], y=spread_data,
+                         mode='lines', name='Bid-Ask Spread', line=dict(color='lightyellow')
+                     ))
+                     fig_spread.update_layout(
+                         title=f'{product} - Historical Bid-Ask Spread (Day {selected_day})',
+                         xaxis_title='Timestamp', yaxis_title='Spread (Ask1 - Bid1)',
+                         hovermode='x unified', template='plotly_dark'
+                     )
+                 else:
+                      fig_spread.update_layout(title=f'{product} Spread (No Valid Data)', template='plotly_dark')
+            else:
+                 fig_spread.update_layout(title=f'{product} Spread (Column Missing)', template='plotly_dark')
+
+
+            # Volume Histogram Logic - Clean data before plotting
+            has_volume_data = False
+            volume_cols = [f'{side}_volume_{i}' for side in ['bid', 'ask'] for i in range(1, 4)]
+            colors = px.colors.qualitative.Plotly
+            for i, col in enumerate(volume_cols):
+                if col in product_prices.columns:
+                    try:
+                        # Ensure numeric, convert errors, drop NaNs
+                        volumes = pd.to_numeric(product_prices[col], errors='coerce').dropna()
+                        valid_volumes = volumes[volumes > 0]
+                        if not valid_volumes.empty:
+                           fig_hist.add_trace(go.Histogram(x=valid_volumes, name=col.replace('_', ' ').title(), marker_color=colors[i % len(colors)], opacity=0.75))
+                           has_volume_data = True # Mark that we found some volume
+                    except Exception as e:
+                         print(f"Error processing/plotting histogram for '{col}', product '{product}': {e}")
+
+            if has_volume_data:
+                fig_hist.update_layout(
+                    title=f'{product} - Historical Volume Distribution (Day {selected_day})',
+                    xaxis_title='Volume per Price Level', yaxis_title='Frequency (Count of Timestamps)',
+                    barmode='overlay', template='plotly_dark', legend_title_text='Volume Levels'
+                )
+                fig_hist.update_traces(opacity=0.75)
+            else:
+                fig_hist.update_layout(title=f'{product} Volume (No Valid Data)', template='plotly_dark')
+
+        # Add graphs to the children list (stacked layout)
         graph_children.append(html.Div([
             html.Div(dcc.Graph(figure=fig_price), style={'width': '100%', 'marginBottom': '5px'}), # Price graph
             html.Div(dcc.Graph(figure=fig_spread), style={'width': '100%', 'marginBottom': '5px'}), # Spread graph

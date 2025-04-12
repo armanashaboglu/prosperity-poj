@@ -65,3 +65,36 @@ TRADING LOGIC DETAILS:
    - Liquidation modes trigger more aggressive pricing to escape stuck positions
 
 ROUND 1:
+
+RAINFOREST\RESIN Strategy (V3RainforestResinStrategy):
+Type: Market Making (based on V3MarketMakingStrategy).
+Fair Value: Assumes a static fair value of 10000 (defined in PARAMS).
+Logic:
+Phase 1 (Take): Takes existing sell orders priced at or below 10000 and buy orders priced at or above 10000, respecting position limits.
+Phase 2 (Make): Places new buy/sell orders based on the remaining order book after Phase 1. It aims to place orders one tick away from the best remaining bid/ask (below/above 10000 respectively), but adjusts the price based on the volume at the best level (if volume <= 6, it uses the best level's price directly). It also includes specific rules to avoid placing orders at 9997, 9999, 10001, and 10003.
+Position Management: Inherits position window tracking and liquidation logic from V3MarketMakingStrategy, but this logic doesn't appear to be actively used in the V3RainforestResinStrategy's specific act method implementation; the primary logic focuses on the two phases described above.
+KELP Strategy (PrototypeKelpStrategy):
+Type: Market Making (based on PrototypeMarketMakingStrategy).
+Fair Value: Dynamically calculated. It prioritizes the average of the highest-volume bid and ask prices. If these aren't available or valid (ask <= bid), it falls back to the midpoint of the best bid/ask. If only one side exists, it uses that price.
+Logic (inherits from PrototypeMarketMakingStrategy):
+Phase 1 (Take): Takes existing orders within calculated price boundaries (max_buy_price, min_sell_price), which are adjusted based on current position (more conservative when skewed).
+Phase 2 (Liquidation): If the position is stuck at the limit (checked using a 4-tick sliding window self.window), it places aggressive orders to rebalance:
+Hard Liquidation (stuck 4/4 ticks): Trades 50% of capacity at the calculated true value.
+Soft Liquidation (stuck >= 2/4 ticks & last tick): Trades 50% of capacity at true_value - 2 if buying (stuck short) or true_value + 2 if selling (stuck long). Note: The code explicitly implements the buy-side liquidation but seems to omit the sell-side logic.
+Phase 3 (Make): Places remaining capacity based on popular prices (highest volume bid/ask) or derived from the true value if the book is thin.
+State: Uses save/load to persist the self.window deque for liquidation logic.
+SQUID\INK Strategy (SquidInkRsiStrategy):
+Type: Technical Indicator (Relative Strength Index - RSI).
+Parameters: Uses rsi_window, rsi_overbought, rsi_oversold from the PARAMS dictionary.
+Logic:
+Calculates the mid-price (average of best bid and ask).
+Calculates RSI using Wilder's smoothing method based on the history of mid-prices.
+Signal:
+If RSI > rsi_overbought: Places an aggressive sell order for the full remaining capacity at best_bid_price - 1.
+If RSI < rsi_oversold: Places an aggressive buy order for the full remaining capacity at best_ask_price + 1.
+Does not actively make markets or consider fair value beyond the RSI signal.
+State: Uses save/load to persist mid_price_history, avg_gain, avg_loss, and rsi_initialized for continuous RSI calculation.
+
+ROUND 2:
+
+
