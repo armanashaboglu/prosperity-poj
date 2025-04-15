@@ -11,12 +11,18 @@ from .historical_data_loader import load_historical_data # Added import for hist
 
 # --- Configuration ---
 LOG_FILE_PATH = 'C:/Users/Admin/Downloads/8979e4ef-51d7-452e-a75f-9e5b698d646e (1).log' # Or make this configurable
-HISTORICAL_DATA_DIR = 'C:/Users/Admin/Downloads/round-2-island-data-bottle/round-2-island-data-bottle' # Added path for historical data
-ROUND_1_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK"] # Added list of R1 products
+HISTORICAL_DATA_DIR = 'C:/Users/Admin/projects/prosperity-poj/strategy/round3/resources/round3' # Added path for historical data
+ROUND_3_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK"] # Added list of R1 products
 POSITION_LIMITS = { # Hardcode for now, ideally load dynamically later
     "KELP": 50,
     "RAINFOREST_RESIN": 50,
-    "SQUID_INK": 50 # Added limit for Squid Ink
+    "SQUID_INK": 50,
+    "CROISSANTS": 250,
+    "JAMS": 350,
+    "DJEMBES": 60,
+    "BASKET1": 60,
+    "BASKET2": 100,
+    
 }
 
 # --- Load and Prepare Data ---

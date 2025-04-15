@@ -155,12 +155,8 @@ class Trader:
         self.pos_limits = POSITION_LIMITS
 
         # A threshold for difference that triggers a trade
-<<<<<<< HEAD
         self.diff_threshold = 200  # Adjust as needed
         self.diff_threshold_basket2 = 120 # Separate threshold for Basket 2
-=======
-        self.diff_threshold = 30  # Adjust as needed
->>>>>>> 8cc6356232fd44f77f14673590fa4d755781b603
 
     def run(self, state: TradingState):
         """
@@ -238,11 +234,7 @@ class Trader:
                         Product.DJEMBES: +1
                     }
                 )
-<<<<<<< HEAD
             elif diff1 < -self.diff_threshold + 50:
-=======
-            elif diff1 < -self.diff_threshold:
->>>>>>> 8cc6356232fd44f77f14673590fa4d755781b603
                 # Underpriced => BUY basket, SELL items
                 self.execute_spread_trade(
                     orders, state,
@@ -255,39 +247,31 @@ class Trader:
                 )
 
         # 4) Check synergy for Basket2 = 4 CROISSANTS + 2 JAMS
-        if (c is not None) and (j is not None) and (b2 is not None):
-            fair_b2 = 4*c + 2*j
-            diff2 = b2 - fair_b2
-            logger.print(f"Basket2 synergy: B2_mid={b2:.1f}, sum_components={fair_b2:.1f}, diff={diff2:.1f}")
+        # if (c is not None) and (j is not None) and (b2 is not None):
+        #     fair_b2 = 4*c + 2*j
+        #     diff2 = b2 - fair_b2
+        #     logger.print(f"Basket2 synergy: B2_mid={b2:.1f}, sum_components={fair_b2:.1f}, diff={diff2:.1f}")
 
-<<<<<<< HEAD
-            if diff2 > self.diff_threshold_basket2:
-=======
-            if diff2 > self.diff_threshold:
->>>>>>> 8cc6356232fd44f77f14673590fa4d755781b603
-                # Overpriced => SELL basket2, BUY items
-                self.execute_spread_trade(
-                    orders, state,
-                    basket_symbol=Product.BASKET2, basket_side=-1,
-                    components_sides={
-                        Product.CROISSANTS: +4,
-                        Product.JAMS: +2
-                    }
-                )
-<<<<<<< HEAD
-            elif diff2 < -self.diff_threshold_basket2 + 30:   # meani ekledim
-=======
-            elif diff2 < -self.diff_threshold:
->>>>>>> 8cc6356232fd44f77f14673590fa4d755781b603
-                # Underpriced => BUY basket2, SELL items
-                self.execute_spread_trade(
-                    orders, state,
-                    basket_symbol=Product.BASKET2, basket_side=+1,
-                    components_sides={
-                        Product.CROISSANTS: -4,
-                        Product.JAMS: -2
-                    }
-                )
+        #     if diff2 > self.diff_threshold_basket2:
+        #         # Overpriced => SELL basket2, BUY items
+        #         self.execute_spread_trade(
+        #             orders, state,
+        #             basket_symbol=Product.BASKET2, basket_side=-1,
+        #             components_sides={
+        #                 Product.CROISSANTS: +4,
+        #                 Product.JAMS: +2
+        #             }
+        #         )
+        #     elif diff2 < -self.diff_threshold_basket2 + 30:   # meani ekledim
+        #         # Underpriced => BUY basket2, SELL items
+        #         self.execute_spread_trade(
+        #             orders, state,
+        #             basket_symbol=Product.BASKET2, basket_side=+1,
+        #             components_sides={
+        #                 Product.CROISSANTS: -4,
+        #                 Product.JAMS: -2
+        #             }
+        #         )
 
         # Convert orders => normal dict
         final_orders = {}
@@ -325,11 +309,7 @@ class Trader:
             logger.print(f"No capacity to trade basket {basket_symbol} side={basket_side}. Skipping.")
             return
 
-<<<<<<< HEAD
         trade_basket_qty = min(5, capacity_basket)  # do a 1-lot if possible
-=======
-        trade_basket_qty = min(1, capacity_basket)  # do a 1-lot if possible
->>>>>>> 8cc6356232fd44f77f14673590fa4d755781b603
 
         # 2) Check each component capacity likewise
         for comp_symbol, comp_side in components_sides.items():

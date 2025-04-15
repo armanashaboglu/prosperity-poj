@@ -148,9 +148,9 @@ BASKET_COMPONENTS = {
 # --- Strategy Parameters (Optimized for B1 only) ---
 PARAMS = {
     "SQUID_INK": { 
-        "rsi_window": 106,
-        "rsi_overbought": 52,
-        "rsi_oversold": 41,
+        "rsi_window": 106,  # optimized paramters for -1 , 0 , 1 is 96
+        "rsi_overbought": 52, # optimized paramters for -1 , 0 , 1 is 56
+        "rsi_oversold": 41, # optimized paramters for -1 , 0 , 1 is 39
     },
     "RAINFOREST_RESIN": { 
         "fair_value": 10000,
@@ -777,6 +777,59 @@ class ZScoreSpreadStrategy(Strategy):
 
         self.spread_history: Deque[float] = deque(maxlen=self.spread_std_window)
 
+    def _calculate_max_tradable_baskets(self, state: TradingState, direction: int) -> int:
+        """Calculates the max number of baskets tradeable in a given direction, respecting all position limits."""
+        if direction == 0: return 0
+        
+        current_basket_pos = state.position.get(self.symbol, 0)
+        
+        # 1. Limit from Basket itself
+        if direction > 0: # Buying basket
+            max_from_basket = self.position_limit - current_basket_pos
+        else: # Selling basket
+            max_from_basket = self.position_limit + current_basket_pos
+
+        if max_from_basket <= 0: return 0 # Cannot trade basket itself
+
+        # 2. Limit from Components
+        max_from_components = float('inf')
+        if not self.components: return max(0, int(max_from_basket)) # No components to limit
+
+        for component_symbol, qty_per_basket in self.components.items():
+            if qty_per_basket == 0: continue
+
+            component_pos = state.position.get(component_symbol, 0)
+            component_limit = self.pos_limits.get(component_symbol, 0)
+            if component_limit == 0: 
+                # logger.print(f"Warning: Component {component_symbol} has position limit 0?")
+                return 0 # Cannot trade if component limit is 0
+
+            # Component trade direction is opposite to basket trade direction
+            comp_trade_direction = -direction 
+            comp_qty_change_per_basket = qty_per_basket * comp_trade_direction
+
+            if comp_qty_change_per_basket > 0: # Need to BUY component
+                comp_capacity = component_limit - component_pos
+            elif comp_qty_change_per_basket < 0: # Need to SELL component
+                comp_capacity = component_limit + component_pos
+            else: # Should not happen if qty_per_basket != 0
+                comp_capacity = float('inf') 
+
+            if comp_capacity < 0: comp_capacity = 0 # Can't trade if already over limit in needed direction
+            
+            if abs(comp_qty_change_per_basket) > 0:
+                max_baskets_for_comp = comp_capacity // abs(comp_qty_change_per_basket)
+            else: # Should not happen
+                max_baskets_for_comp = float('inf')
+
+            max_from_components = min(max_from_components, max_baskets_for_comp)
+            logger.print(f"Comp {component_symbol}: Pos={component_pos}, Lim={component_limit}, ChgPerBask={comp_qty_change_per_basket}, Cap={comp_capacity}, MaxBask={max_baskets_for_comp}")
+
+        # Final calculation
+        max_tradable = min(max_from_basket, max_from_components)
+        # logger.print(f"Calc Max Tradable ({direction}): BasketLim={max_from_basket}, CompLim={max_from_components} -> {max(0, int(max_tradable))}")
+        return max(0, int(max_tradable))
+
     def _get_synthetic_mid_price(self, state: TradingState) -> Optional[float]:
         synthetic_price = 0.0
         if not self.components: return None
@@ -907,11 +960,18 @@ class ZScoreSpreadStrategy(Strategy):
         z_score = (spread - self.default_spread_mean) / spread_std
         # logger.print(f" {self.symbol} (Act): Spread={spread:.2f}, FixedMean={self.default_spread_mean}, RollStd={spread_std:.2f}, Z={z_score:.2f}")
 
-        target_pos = basket_position
+        target_pos = basket_position # Default to current position
         orders_to_place = None
+        desired_position = basket_position # Start with current
 
-        if z_score >= self.zscore_threshold: target_pos = -self.target_position # High Z -> Short
-        elif z_score <= -self.zscore_threshold: target_pos = self.target_position # Low Z -> Long
+        if z_score >= self.zscore_threshold: # Signal to SHORT basket
+            max_shortable = self._calculate_max_tradable_baskets(state, -1)
+            desired_position = -max_shortable
+            # logger.print(f"{self.symbol}: High Z ({z_score:.2f} >= {self.zscore_threshold}). Max Short: {max_shortable}. Target: {desired_position}")
+        elif z_score <= -self.zscore_threshold: # Signal to LONG basket
+            max_longable = self._calculate_max_tradable_baskets(state, 1)
+            desired_position = max_longable
+            # logger.print(f"{self.symbol}: Low Z ({z_score:.2f} <= {-self.zscore_threshold}). Max Long: {max_longable}. Target: {desired_position}")
         else:
             # Check if we should close the position based on Z-score normalizing
             if self.symbol == Product.PICNIC_BASKET1:
@@ -923,11 +983,15 @@ class ZScoreSpreadStrategy(Strategy):
 
             if (basket_position > 0 and z_score <= close_threshold) or \
                (basket_position < 0 and z_score >= -close_threshold):
-                desired_position = 0
+                desired_position = 0 # Signal to close position
                 logger.print(f"{self.symbol}: Z-score ({z_score:.2f}) crossed threshold ({close_threshold:.2f}). Closing position.")
 
-        if basket_position != target_pos:
-            orders_to_place = self.execute_spread_orders(target_pos, basket_position, order_depths)
+        # Use the calculated desired_position respecting limits
+        if basket_position != desired_position:
+            target_pos = desired_position # Set the final target position
+            orders_to_place = self.execute_spread_orders(target_pos, basket_position, order_depths) 
+        else:
+            target_pos = basket_position # No change needed
 
         if orders_to_place:
             self.orders.extend([order for order_list in orders_to_place.values() for order in order_list])
