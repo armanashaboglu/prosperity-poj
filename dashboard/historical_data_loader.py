@@ -22,7 +22,7 @@ def load_historical_data(directory_path):
     """
     historical_data = {}
     # Round 2 data only contains days -1 and 0
-    days = [-1, 0 , 1]
+    days = [0, 1 , 2]
 
     if not os.path.isdir(directory_path):
         # Update the default path in the error message if needed, but the function uses the passed path
@@ -36,8 +36,8 @@ def load_historical_data(directory_path):
         # Construct expected file paths for Round 2
         day_str = str(day) # Use string representation for matching
 
-        prices_pattern = os.path.join(directory_path, f'prices_round_2_day_{day_str}.csv')
-        trades_pattern = os.path.join(directory_path, f'trades_round_2_day_{day_str}_nn.csv')
+        prices_pattern = os.path.join(directory_path, f'prices_round_3_day_{day_str}.csv')
+        trades_pattern = os.path.join(directory_path, f'trades_round_3_day_{day_str}_nn.csv')
 
         # Find files matching the pattern
         price_files = glob.glob(prices_pattern)
