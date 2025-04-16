@@ -17,35 +17,34 @@
 
 #2 — smile fit per timestamp
 # Fit quadratic: IV = a * m^2 + b * m + c
-# Get fitted IV for each voucher
-# Residual IV = Actual IV - Fitted IV
-
 # base IV = fitted IV at m=0 → equal  c
 
-# 3 — resid z-Score trading signal
-
-#hitorical mean of resids
-#rolling_std  = Residual_IV.rolling(N).std()
-#zscore = (Residual_IV - rolling_mean) / rolling_std
-# trading logic:
-#if zscore > upper_threshold:
-#    SELL Option (IV is too high)
-#if zscore < lower_threshold:
-#    BUY Option (IV is too low)
-
-# 4 — base IV mean reversion signal(?)
+#base IV mean reversion signal
 # store base IV time series
-#base_iv_mean = smoothed base IV(lowess)
+#base_iv_mean = smoothed base IV(double ewma long term)
 #base_iv_std  = Base_IV.rolling(N).std()
-#zscore_base = (Base_IV - base_iv_mean) / base_iv_std
+#zscore_base = (Base_IV (short term ewma) - base_iv_mean) / base_iv_std
+# We use one short term ewma, and one long term double ewma to filter out noise.
+#short_ewma_span = 20  # for now
+#long_ewma_span = 100 # for now
+#rolling_window = 50 # for now
 # trading logic:
 #if zscore_base > upper_threshold:
-#SELL all options (?)
+#SELL all options trade size = 1
 
 #if zscore_base < lower_threshold:
-#buy all options (?)
+#buy all options trade size = 1
 
-# NOISE REDUCTION needed for base iv trading. maybe even for residual iv trading.
+
+#intuition behind the strategy:
+    # Base IV is the implied volatility of a option when perfectly at the money. Strike = Spot price.
+    # Therefore, the implied volatility of this option is the most "pure" measure of expected volatility
+    # According to our analysis, the Base IV is mean reverting.
+    # Therefore, if we can SELL the base IV when above a threshold, and BUY the base IV when below a threshold,
+    # However, base IV data is noisy, so we use a double ewma to smooth the data.
+    # We use one short term ewma, and one long term double ewma to filter out noise.
+    # We use a zscore to determine when to SELL or BUY the base IV.
+
 import json
 import numpy as np
 from typing import Any, Dict, List, Optional, Tuple
@@ -250,13 +249,7 @@ class VolatilitySmileTrader:
         """Initialize the Volatility Smile trader for all vouchers"""
         self.position_limits = POSITION_LIMITS
         
-        # Strategy parameters
-        self.window_size = 500  # optimize later
-        self.residual_upper_threshold = 2.5  
-        self.residual_lower_threshold = -2.5
-        self.close_position_threshold = 0.15  # threshold for closing positions
-        self.order_size_factor = 0.2  # factor to determine order size
-        
+        # Voucher symbols
         self.voucher_symbols = [
             Product.VOUCHER_9500, 
             Product.VOUCHER_9750, 
@@ -265,30 +258,42 @@ class VolatilitySmileTrader:
             Product.VOUCHER_10500
         ]
         
+        # Strategy parameters for base IV mean reversion
+        self.short_ewma_span = 32  # First level EWMA span for Base IV
+        self.long_ewma_span = 55  # Second level EWMA span for double EWMA
+        self.rolling_window = 71   # Window for rolling standard deviation
         
-        self.residual_ivs = {symbol: deque(maxlen=self.window_size) for symbol in self.voucher_symbols}
+        # Z-score thresholds for trading signals
+        self.zscore_upper_threshold = 0.6  # Z-score threshold for sell signals
+        self.zscore_lower_threshold = -2.2  # Z-score threshold for buy signals
         
-        # store residuals for position tracking
-        self.ewma_residuals = deque(maxlen=self.window_size)
+        
+        self.trade_size = 17
         
         
-        self.day = 2  # CHANGE TO 3 WHEN SUBMITTING!
+        self.base_iv_history = deque(maxlen=200)
+        
+       
+        self.short_ewma_base_iv = None
+        self.long_ewma_first = None  
+        self.long_ewma_base_iv = None  
+        
+        
+        self.ewma_diff_history = deque(maxlen=200)
+        
+        
+        self.zscore_history = deque(maxlen=100)
+        
+        
+        self.day = 2  # set to 3 when sub 
         self.last_timestamp = None
     
     def update_time_to_expiry(self, timestamp):
         """Calculate time to expiry based on the current timestamp."""
-        
         base_tte = 8 - self.day
-        
-        
         iteration = (timestamp % 1000000) // 100
-        
-        # linear decay
         iteration_adjustment = iteration / 10000
-        
-        # 
         tte = (base_tte - iteration_adjustment) / 365
-        
         return max(0.0001, tte)  
     
     def get_mid_price(self, symbol: Symbol, state: TradingState) -> Optional[float]:
@@ -309,37 +314,26 @@ class VolatilitySmileTrader:
         else:
             return None
     
-    def calculate_order_size(self, symbol: Symbol, z_score: float, state: TradingState) -> int:
-        """Calculate order size based on z-score magnitude and position limits."""
-        
+    def calculate_order_size(self, symbol: Symbol, zscore: float, state: TradingState) -> int:
+        """Calculate order size based on z-score sign and current position."""
         current_position = state.position.get(symbol, 0)
         position_limit = self.position_limits.get(symbol, 0)
         
-        # Calculate available capacity
-        if z_score > 0:  
-            available_capacity = position_limit + current_position
-        else:  
-            available_capacity = position_limit - current_position
-        
-        # base size on z-score magnitude and position limit
-        threshold = abs(self.residual_upper_threshold)
-        size_pct = min(1.0, abs(z_score) / threshold) * self.order_size_factor
-        
-        size = int(size_pct * position_limit)
+       
+        fixed_size = self.trade_size
         
         
-        size = min(size, available_capacity)
-        
-        #
-        return size if z_score < 0 else -size
-    
-    def calculate_close_position_size(self, symbol: Symbol, state: TradingState) -> int:
-        """Calculate size needed to close current position."""
-        current_position = state.position.get(symbol, 0)
-        if current_position == 0:
-            return 0
-            
-        return -current_position
+        if zscore > 0:  
+           
+            if current_position - fixed_size >= -position_limit:
+                return -fixed_size  
+            else:
+                return 0  
+        else: 
+            if current_position + fixed_size <= position_limit:
+                return fixed_size 
+            else:
+                return 0  
     
     def place_order(self, orders_dict, symbol, price, quantity):
         """Add an order to the orders dictionary."""
@@ -352,23 +346,26 @@ class VolatilitySmileTrader:
         orders_dict[symbol].append(Order(symbol, price, quantity))
         logger.print(f"PLACE {symbol} {'BUY' if quantity > 0 else 'SELL'} {abs(quantity)}x{price}")
     
+    def update_ewma(self, current_value, previous_ewma, span):
+        """Calculate EWMA (Exponentially Weighted Moving Average)."""
+        if previous_ewma is None:
+            return current_value
+        alpha = 2 / (span + 1)
+        return alpha * current_value + (1 - alpha) * previous_ewma
+        
     def run(self, state: TradingState) -> Dict[Symbol, List[Order]]:
-        """Execute the volatility smile trading strategy."""
+        """Execute the volatility smile trading strategy using base IV mean reversion signals."""
         orders_dict = {}
         
-        
         self.last_timestamp = state.timestamp
-        
-        
         time_to_expiry = self.update_time_to_expiry(state.timestamp)
-        
         
         rock_price = self.get_mid_price(Product.VOLCANIC_ROCK, state)
         if not rock_price:
             logger.print("No price available for VOLCANIC_ROCK, skipping iteration")
             return orders_dict
         
-        # calculate moneyness and implied volatility for each voucher
+        
         moneyness_values = []
         iv_values = []
         voucher_data = {}
@@ -380,10 +377,10 @@ class VolatilitySmileTrader:
                 
             strike = STRIKES[voucher]
             
-            # moneyness
+           
             moneyness = math.log(strike / rock_price) / math.sqrt(time_to_expiry)
             
-            # implied volatility
+            
             impl_vol = calculate_implied_volatility(voucher_price, rock_price, strike, time_to_expiry)
             
             if impl_vol > 0: 
@@ -391,73 +388,94 @@ class VolatilitySmileTrader:
                 iv_values.append(impl_vol)
                 voucher_data[voucher] = {'moneyness': moneyness, 'iv': impl_vol}
         
-        #  Smile Fitting 
+        
         if len(moneyness_values) >= 3:
             try:
+                
                 coeffs = np.polyfit(moneyness_values, iv_values, 2)
                 a, b, c = coeffs
                 
-                # Calculate residual IV for each voucher
-                for voucher, data in voucher_data.items():
-                    moneyness = data['moneyness']
-                    actual_iv = data['iv']
-                    fitted_iv = a * moneyness**2 + b * moneyness + c
-                    residual_iv = actual_iv - fitted_iv
-                    self.residual_ivs[voucher].append(residual_iv)
+               
+                base_iv = c
+                logger.print(f"Base IV (ATM): {base_iv:.6f}")
                 
-                # Trading logic
-                for voucher in self.voucher_symbols:
-                    if voucher in voucher_data and len(self.residual_ivs[voucher]) >= 10:
-                        residuals = list(self.residual_ivs[voucher])
-                        current_position = state.position.get(voucher, 0)
+                
+                self.base_iv_history.append(base_iv)
+                
+                self.short_ewma_base_iv = self.update_ewma(
+                    base_iv, 
+                    self.short_ewma_base_iv, 
+                    self.short_ewma_span
+                )
+                
+                # Update
+                self.long_ewma_first = self.update_ewma(
+                    base_iv,
+                    self.long_ewma_first,
+                    self.long_ewma_span
+                )
+                
+                # 5. Update second l
+                self.long_ewma_base_iv = self.update_ewma(
+                    self.long_ewma_first,
+                    self.long_ewma_base_iv,
+                    self.long_ewma_span
+                )
+                
+                
+                if len(self.base_iv_history) >= self.rolling_window and self.short_ewma_base_iv is not None and self.long_ewma_base_iv is not None:
+                    
+                    ewma_diff = self.short_ewma_base_iv - self.long_ewma_base_iv
+                    
+                    
+                    if not hasattr(self, 'ewma_diff_history'):
+                        self.ewma_diff_history = deque(maxlen=200)
+                    self.ewma_diff_history.append(ewma_diff)
+                    
+                    
+                    
+                    if len(self.ewma_diff_history) >= self.rolling_window:
+                        recent_ewma_diffs = list(self.ewma_diff_history)[-self.rolling_window:]
+                        rolling_std = np.std(recent_ewma_diffs)
+                    else:
+                        rolling_std = np.std(list(self.ewma_diff_history))
+                    
+                
+                    if rolling_std > 0:
+                        zscore = ewma_diff / rolling_std
+                    else:
+                        zscore = 0
+                    
+                    self.zscore_history.append(zscore)
+                    
+                    logger.print(f"Base IV: {base_iv:.6f}, Short EWMA: {self.short_ewma_base_iv:.6f}, Long EWMA: {self.long_ewma_base_iv:.6f}")
+                    logger.print(f"EWMA Diff: {ewma_diff:.6f}, Rolling StdDev: {rolling_std:.6f}")
+                    logger.print(f"Z-score: {zscore:.4f}, Upper Threshold: {self.zscore_upper_threshold}, Lower Threshold: {self.zscore_lower_threshold}")
+                    
+                    
+                    if zscore > self.zscore_upper_threshold:
+                        logger.print(f"SELL SIGNAL - Z-score: {zscore:.4f} > {self.zscore_upper_threshold}")
                         
-                        historical_mean = HISTORICAL_MEAN_RESIDUALS.get(voucher, 0.0)
-                        std_residual = np.std(residuals) if np.std(residuals) > 0 else 1.0
-                        
-                        current_residual = self.residual_ivs[voucher][-1]
-                        zscore = (current_residual - historical_mean) / std_residual
-                        
-                        logger.print(f"{voucher} - Current Residual: {current_residual:.6f}, Historical Mean: {historical_mean:.6f}, Z-Score: {zscore:.2f}, Position: {current_position}")
-                        
-                        # Close positions
-                        #if current_position > 0 and abs(zscore) <= self.close_position_threshold:
-                            #logger.print(f"CLOSING LONG POSITION FOR {voucher} - Z-Score: {zscore:.2f} in range [-{self.close_position_threshold}, {self.close_position_threshold}]")
-                            #voucher_price = self.get_mid_price(voucher, state)
-                            #if voucher_price:
-                                #price = int(round(voucher_price - 1))
-                                #order_size = self.calculate_close_position_size(voucher, state)
-                                #if order_size != 0:
-                                    #self.place_order(orders_dict, voucher, price, order_size)
-                        
-                        #elif current_position < 0 and abs(zscore) <= self.close_position_threshold:
-                        #    logger.print(f"CLOSING SHORT POSITION FOR {voucher} - Z-Score: {zscore:.2f} in range [-{self.close_position_threshold}, {self.close_position_threshold}]")
-                        #    voucher_price = self.get_mid_price(voucher, state)
-                        #    if voucher_price:
-                                #price = int(round(voucher_price + 1))
-                                #order_size = self.calculate_close_position_size(voucher, state)
-                                #if order_size != 0:
-                                    #self.place_order(orders_dict, voucher, price, order_size)
-                        
-                        
-                        
+                        for voucher in self.voucher_symbols:
+                            voucher_price = self.get_mid_price(voucher, state)
+                            if voucher_price:
+                                price = int(round(voucher_price - 1))
                             
-                        if zscore > abs(self.residual_upper_threshold):
-                                logger.print(f"INDIVIDUAL SELL SIGNAL FOR {voucher} - Z-Score: {zscore:.2f} > {abs(self.residual_upper_threshold)}")
-                                voucher_price = self.get_mid_price(voucher, state)
-                                if voucher_price:
-                                    price = int(round(voucher_price - 1))
-                                    order_size = self.calculate_order_size(voucher, zscore, state)
-                                    if order_size != 0:
-                                        self.place_order(orders_dict, voucher, price, order_size)
-                            
-                        elif zscore < self.residual_lower_threshold:
-                                logger.print(f"INDIVIDUAL BUY SIGNAL FOR {voucher} - Z-Score: {zscore:.2f} < {self.residual_lower_threshold}")
-                                voucher_price = self.get_mid_price(voucher, state)
-                                if voucher_price:
-                                    price = int(round(voucher_price + 1))
-                                    order_size = self.calculate_order_size(voucher, zscore, state)
-                                    if order_size != 0:
-                                        self.place_order(orders_dict, voucher, price, order_size)
+                                order_size = self.calculate_order_size(voucher, zscore, state)
+                                if order_size != 0:
+                                    self.place_order(orders_dict, voucher, price, order_size)
+                    
+                    elif zscore < self.zscore_lower_threshold:
+                        logger.print(f"BUY SIGNAL - Z-score: {zscore:.4f} < {self.zscore_lower_threshold}")
+                        
+                        for voucher in self.voucher_symbols:
+                            voucher_price = self.get_mid_price(voucher, state)
+                            if voucher_price:
+                                price = int(round(voucher_price + 1))  
+                                
+                                order_size = self.calculate_order_size(voucher, zscore, state)
+                                if order_size != 0:
+                                    self.place_order(orders_dict, voucher, price, order_size)
             
             except Exception as e:
                 logger.print(f"Error: {e}")
@@ -470,8 +488,14 @@ class VolatilitySmileTrader:
         """Save the current state of the trader."""
         return {
             "day": self.day,
-            "residual_ivs": {symbol: list(values) for symbol, values in self.residual_ivs.items()},
-            "ewma_residuals": list(self.ewma_residuals),
+            "base_iv_history": list(self.base_iv_history),
+            "short_ewma_base_iv": self.short_ewma_base_iv,
+            "long_ewma_first": self.long_ewma_first,
+            "long_ewma_base_iv": self.long_ewma_base_iv,
+            "ewma_diff_history": list(self.ewma_diff_history) if hasattr(self, 'ewma_diff_history') else [],
+            "zscore_history": list(self.zscore_history),
+            "zscore_upper_threshold": self.zscore_upper_threshold,
+            "zscore_lower_threshold": self.zscore_lower_threshold,
             "last_timestamp": self.last_timestamp
         }
     
@@ -482,16 +506,28 @@ class VolatilitySmileTrader:
             
         self.day = state_data.get("day", self.day)
         
-        # Load residual IVs for individual vouchers
-        residual_ivs = state_data.get("residual_ivs", {})
-        for symbol, values in residual_ivs.items():
-            if symbol in self.residual_ivs:
-                self.residual_ivs[symbol] = deque(values, maxlen=self.window_size)
         
-        # Load other residuals
-        self.ewma_residuals = deque(state_data.get("ewma_residuals", []), maxlen=self.window_size)
+        base_iv_history = state_data.get("base_iv_history", [])
+        self.base_iv_history = deque(base_iv_history, maxlen=200)
         
-        # Load timestamp
+        
+        self.short_ewma_base_iv = state_data.get("short_ewma_base_iv")
+        self.long_ewma_first = state_data.get("long_ewma_first")
+        self.long_ewma_base_iv = state_data.get("long_ewma_base_iv")
+        
+       
+        ewma_diff_history = state_data.get("ewma_diff_history", [])
+        self.ewma_diff_history = deque(ewma_diff_history, maxlen=200)
+        
+      
+        zscore_history = state_data.get("zscore_history", [])
+        self.zscore_history = deque(zscore_history, maxlen=100)
+        
+        
+        self.zscore_upper_threshold = state_data.get("zscore_upper_threshold", self.zscore_upper_threshold)
+        self.zscore_lower_threshold = state_data.get("zscore_lower_threshold", self.zscore_lower_threshold)
+        
+        
         self.last_timestamp = state_data.get("last_timestamp")
 
 class Trader:

@@ -589,8 +589,8 @@ if __name__ == "__main__":
     parser.add_argument('--product',
                         type=str,
                         required=True,
-                        choices=[Product.SQUID_INK, Product.VOLCANIC_ROCK, "B1B2_DEVIATION"],
-                        help='The product/strategy to optimize (e.g., SQUID_INK, VOLCANIC_ROCK, B1B2_DEVIATION)')
+                        choices=[Product.SQUID_INK, Product.VOLCANIC_ROCK, "B1B2_DEVIATION", "VOLATILITY_SMILE"],
+                        help='The product/strategy to optimize (e.g., SQUID_INK, VOLCANIC_ROCK, B1B2_DEVIATION, VOLATILITY_SMILE)')
     args = parser.parse_args()
     target_product = args.product
     # --- End Argument Parsing ---
