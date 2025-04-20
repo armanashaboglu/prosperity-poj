@@ -423,4 +423,37 @@ You know there’s a constant desire for Flippers on the archipelago. So, at the
 
 Think hard about how you want to set your two bids, place your feet firmly in the sand and brace yourself, because this could get messy.
 
+ROUND 4:
+
+## Algorithm challenge
+
+In this fourth round of Prosperity a new luxury product is introduced: `MAGNIFICENT MACARONS`. `MAGNIFICENT MACARONS` are a delicacy and their value is dependent on all sorts of observable factors like hours of sun light, sugar prices, shipping costs, in- & export tariffs and suitable storage space. Can you find the right connections to optimize your program? 
+
+Position limits for the newly introduced products:
+
+- `MAGNIFICENT_MACARONS`: 75
+- Conversion Limit for `MAGNIFICENT_MACARONS` = 10
+
+## Additional trading microstructure information:
+
+1. ConversionObservation (detailed in “[Writing an Algorithm in Python](https://www.notion.so/17be8453a09381988c6ed45b1b597049?pvs=21)” under E-learning center) shows quotes of `MAGNIFICENT_MACARONS` offered by the chefs from Pristine Cuisine
+2. To purchase 1 unit of `MAGNIFICENT_MACARONS` from Pristine Cuisine, you will purchase at askPrice, pay `TRANSPORT_FEES` and `IMPORT_TARIFF`
+3. To sell 1 unit of `MAGNIFICENT_MACARONS` to Pristine Cuisine, you will sell at bidPrice, pay `TRANSPORT_FEES` and `EXPORT_TARIFF`
+4. You can ONLY trade with Pristine Cuisine via the conversion request with applicable conditions as mentioned in the wiki
+5. For every 1 unit of `MAGNIFICENT_MACARONS` net long position, storage cost of 0.1 Seashells per timestamp will be applied for the duration that position is held. No storage cost applicable to net short position
+
+ROUND 5:
+
+## Algorithm challenge
+
+The final round of the challenge is already here! And surprise, no new products are introduced for a change. Dull? Probably not, as you do get another treat. The island exchange now discloses to you who the counterparty is you have traded against. This means that the counter_party property of the OwnTrade object is now populated. Perhaps interesting to see if you can leverage this information to make your algorithm even more profitable?
+
+```python
+class OwnTrade:
+    def __init__(self, symbol: Symbol, price: int, quantity: int, counter_party: UserId = None) -> None:
+        self.symbol = symbol
+        self.price: int = price
+        self.quantity: int = quantity
+        self.counter_party = counter_party
+
 

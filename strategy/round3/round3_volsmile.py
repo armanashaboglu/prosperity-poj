@@ -259,16 +259,16 @@ class VolatilitySmileTrader:
         ]
         
         # Strategy parameters for base IV mean reversion
-        self.short_ewma_span = 32  # First level EWMA span for Base IV
-        self.long_ewma_span = 55  # Second level EWMA span for double EWMA
-        self.rolling_window = 71   # Window for rolling standard deviation
+        self.short_ewma_span = 37  # First level EWMA span for Base IV
+        self.long_ewma_span = 68  # Second level EWMA span for double EWMA
+        self.rolling_window = 48   # Window for rolling standard deviation
         
         # Z-score thresholds for trading signals
-        self.zscore_upper_threshold = 0.6  # Z-score threshold for sell signals
-        self.zscore_lower_threshold = -2.2  # Z-score threshold for buy signals
+        self.zscore_upper_threshold = 0.5  # Z-score threshold for sell signals
+        self.zscore_lower_threshold = -2.8  # Z-score threshold for buy signals
         
         
-        self.trade_size = 17
+        self.trade_size = 22
         
         
         self.base_iv_history = deque(maxlen=200)
@@ -365,6 +365,30 @@ class VolatilitySmileTrader:
             logger.print("No price available for VOLCANIC_ROCK, skipping iteration")
             return orders_dict
         
+        # Add risk management check - if deep out of the money, go flat
+        for voucher in self.voucher_symbols:
+            strike = STRIKES[voucher]
+            # Check if underlying - strike is <= -250 (deep out of the money)
+            if rock_price - strike <= -250:
+                current_position = state.position.get(voucher, 0)
+                if current_position != 0:
+                    voucher_price = self.get_mid_price(voucher, state)
+                    if voucher_price and current_position > 0:
+                        # Have long position, need to sell to go flat
+                        order_depth = state.order_depths.get(voucher)
+                        if order_depth and order_depth.buy_orders:
+                            best_bid = max(order_depth.buy_orders.keys())
+                            # Place sell order at best bid to flatten position
+                            self.place_order(orders_dict, voucher, best_bid, -current_position)
+                            logger.print(f"RISK MGMT - FLATTEN: {voucher} SELL {current_position}x{best_bid} (rock:{rock_price}, strike:{strike})")
+                    elif voucher_price and current_position < 0:
+                        # Have short position, need to buy to go flat
+                        order_depth = state.order_depths.get(voucher)
+                        if order_depth and order_depth.sell_orders:
+                            best_ask = min(order_depth.sell_orders.keys())
+                            # Place buy order at best ask to flatten position
+                            self.place_order(orders_dict, voucher, best_ask, -current_position)
+                            logger.print(f"RISK MGMT - FLATTEN: {voucher} BUY {-current_position}x{best_ask} (rock:{rock_price}, strike:{strike})")
         
         moneyness_values = []
         iv_values = []
@@ -457,25 +481,45 @@ class VolatilitySmileTrader:
                         logger.print(f"SELL SIGNAL - Z-score: {zscore:.4f} > {self.zscore_upper_threshold}")
                         
                         for voucher in self.voucher_symbols:
-                            voucher_price = self.get_mid_price(voucher, state)
-                            if voucher_price:
-                                price = int(round(voucher_price - 1))
+                            # Check if deep out of the money before placing orders
+                            strike = STRIKES[voucher]
+                            if rock_price - strike <= -250:
+                                logger.print(f"SKIPPING {voucher} - Too far out of money: rock:{rock_price}, strike:{strike}")
+                                continue
+                                
+                            order_depth = state.order_depths.get(voucher)
+                            # Ensure we have an order depth and buy orders to determine the best bid
+                            if order_depth and order_depth.buy_orders:
+                                best_bid = max(order_depth.buy_orders.keys())
+                                price_to_sell = best_bid # Place sell order at best bid
                             
                                 order_size = self.calculate_order_size(voucher, zscore, state)
                                 if order_size != 0:
-                                    self.place_order(orders_dict, voucher, price, order_size)
+                                    self.place_order(orders_dict, voucher, price_to_sell, order_size)
+                            else:
+                                logger.print(f"No best bid found for {voucher} to place sell order.") # Log if no bid exists
                     
                     elif zscore < self.zscore_lower_threshold:
                         logger.print(f"BUY SIGNAL - Z-score: {zscore:.4f} < {self.zscore_lower_threshold}")
                         
                         for voucher in self.voucher_symbols:
-                            voucher_price = self.get_mid_price(voucher, state)
-                            if voucher_price:
-                                price = int(round(voucher_price + 1))  
+                            # Check if deep out of the money before placing orders
+                            strike = STRIKES[voucher]
+                            if rock_price - strike <= -250:
+                                logger.print(f"SKIPPING {voucher} - Too far out of money: rock:{rock_price}, strike:{strike}")
+                                continue
+                                
+                            order_depth = state.order_depths.get(voucher)
+                            # Ensure we have an order depth and sell orders to determine the best ask
+                            if order_depth and order_depth.sell_orders:
+                                best_ask = min(order_depth.sell_orders.keys())
+                                price_to_buy = best_ask # Place buy order at best ask
                                 
                                 order_size = self.calculate_order_size(voucher, zscore, state)
                                 if order_size != 0:
-                                    self.place_order(orders_dict, voucher, price, order_size)
+                                    self.place_order(orders_dict, voucher, price_to_buy, order_size)
+                            else:
+                                logger.print(f"No best ask found for {voucher} to place buy order.") # Log if no ask exists
             
             except Exception as e:
                 logger.print(f"Error: {e}")

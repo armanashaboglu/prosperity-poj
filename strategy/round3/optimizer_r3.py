@@ -19,11 +19,10 @@ import traceback # Make sure this is imported at the top
 
 # --- !! IMPORTANT: SET THESE PATHS CORRECTLY !! ---
 BACKTESTER_SCRIPT_PATH = "prosperity3bt" # Assumes it's runnable via 'python -m prosperity3bt'
-# <<< Strategy being optimized (SHOULD BE THE ROUND 3 FILE NOW) >>>
-ORIGINAL_STRATEGY_PATH = "strategy/round3/round3_omer1.py" # <<< Path to the R3 strategy file
-# <<< Temp dir reflects R3 strategy + evaluation data >>>
-TEMP_DIR = "temp_optimizer_omer1_r3" # Updated temp dir name
-# <<< Custom data path for R3 testing >>>
+# Default strategy path - will be overridden by command line argument if provided
+DEFAULT_STRATEGY_PATH = "strategy/round3/round3_submission.py"
+# Temp dir for optimization
+TEMP_DIR = "temp_optimizer_r3"
 
 # Optuna Settings
 N_TRIALS = 125 # Adjusted trials
@@ -49,6 +48,12 @@ class Product:
     VOLCANIC_ROCK_VOUCHER_10000 = "VOLCANIC_ROCK_VOUCHER_10000"
     VOLCANIC_ROCK_VOUCHER_10250 = "VOLCANIC_ROCK_VOUCHER_10250"
     VOLCANIC_ROCK_VOUCHER_10500 = "VOLCANIC_ROCK_VOUCHER_10500"
+    # Add short form voucher names to match round3_volsmile.py
+    VOUCHER_9500 = "VOLCANIC_ROCK_VOUCHER_9500"
+    VOUCHER_9750 = "VOLCANIC_ROCK_VOUCHER_9750"
+    VOUCHER_10000 = "VOLCANIC_ROCK_VOUCHER_10000"
+    VOUCHER_10250 = "VOLCANIC_ROCK_VOUCHER_10250"
+    VOUCHER_10500 = "VOLCANIC_ROCK_VOUCHER_10500"
 
 # --- Load BASE_PARAMS and BASE_ARB_PARAMS from the original strategy file ---
 BASE_PARAMS = {}
@@ -62,7 +67,7 @@ BASE_VOUCHER_10500_PARAMS = {}
 
 try:
     # Use the updated ORIGINAL_STRATEGY_PATH
-    with open(ORIGINAL_STRATEGY_PATH, 'r') as f_base:
+    with open(DEFAULT_STRATEGY_PATH, 'r') as f_base:
         content = f_base.read()
 
         # Extract PARAMS
@@ -82,7 +87,7 @@ try:
                     if key in [Product.SQUID_INK, Product.VOLCANIC_ROCK]:
                         BASE_PARAMS[key] = value
 
-                print(f"Successfully loaded BASE_PARAMS from {ORIGINAL_STRATEGY_PATH}.")
+                print(f"Successfully loaded BASE_PARAMS from {DEFAULT_STRATEGY_PATH}.")
                 # Basic validation
                 if not BASE_PARAMS: 
                     print("Warning: BASE_PARAMS seems empty after loading.")
@@ -93,7 +98,7 @@ try:
                 raise ValueError("Failed to parse PARAMS from strategy file.")
 
         else:
-            print(f"WARNING: Could not automatically extract PARAMS from {ORIGINAL_STRATEGY_PATH}.")
+            print(f"WARNING: Could not automatically extract PARAMS from {DEFAULT_STRATEGY_PATH}.")
             # Fallback based on previous known structure
             BASE_PARAMS = { 
                 Product.SQUID_INK: { "rsi_window": 96, "rsi_overbought": 56, "rsi_oversold": 39 },
@@ -107,9 +112,9 @@ try:
             exec_locals_arb = {}
             exec(f"BASE_ARB_PARAMS = {arb_params_str}", {}, exec_locals_arb)
             BASE_ARB_PARAMS = exec_locals_arb['BASE_ARB_PARAMS']
-            print(f"Successfully loaded BASE_ARB_PARAMS from {ORIGINAL_STRATEGY_PATH}.")
+            print(f"Successfully loaded BASE_ARB_PARAMS from {DEFAULT_STRATEGY_PATH}.")
         else:
-            print(f"WARNING: Could not automatically extract ARB_PARAMS from {ORIGINAL_STRATEGY_PATH}. Using fallback.")
+            print(f"WARNING: Could not automatically extract ARB_PARAMS from {DEFAULT_STRATEGY_PATH}. Using fallback.")
             BASE_ARB_PARAMS = { # Fallback for B1B2_DEVIATION strategy
                 "diff_threshold_b1": 200, "diff_threshold_b2": 120,
                 "diff_threshold_b1_b2": 60, "max_arb_lot": 5,
@@ -117,7 +122,7 @@ try:
             }
 
 except Exception as e:
-    print(f"ERROR loading parameters from {ORIGINAL_STRATEGY_PATH}: {e}. Using fallback defaults.")
+    print(f"ERROR loading parameters from {DEFAULT_STRATEGY_PATH}: {e}. Using fallback defaults.")
     # Fallback defaults
     BASE_PARAMS = {
         Product.SQUID_INK: { "rsi_window": 96, "rsi_overbought": 56, "rsi_oversold": 39 },
@@ -135,8 +140,18 @@ def get_new_params_lines(params):
     param_items = list(params.items())
     for i, (key_str, value_dict) in enumerate(param_items):
         if not isinstance(value_dict, dict): continue # Skip if value isn't a dict
-        # Handle keys like Product.SQUID_INK
-        formatted_key = key_str if key_str.startswith('Product.') else f'"{key_str}"' # Ensure quotes if needed
+        
+        # Handle keys like Product.SQUID_INK - make sure to use proper Product reference
+        if key_str == Product.SQUID_INK:
+            formatted_key = "Product.SQUID_INK"
+        elif key_str == Product.VOLCANIC_ROCK:
+            formatted_key = "Product.VOLCANIC_ROCK"
+        elif key_str == Product.B1B2_DEVIATION:
+            formatted_key = "Product.B1B2_DEVIATION"
+        else:
+            # Fall back to string representation for other keys
+            formatted_key = repr(key_str)
+        
         formatted_params_lines.append(f"    {formatted_key}: {{\n")
         value_items = list(value_dict.items())
         for j, (param_name, param_value) in enumerate(value_items):
@@ -371,6 +386,30 @@ def objective(trial: optuna.Trial, target_product: str):
             "close_threshold_b1_b2": diff_b1_b2_close, # New close threshold
             "max_arb_lot": max_lot
         })
+    elif target_product == "VOLATILITY_SMILE":
+        # --- Suggest VOLATILITY_SMILE Strategy Params ---
+        # Suggest EWMA spans and rolling window
+        short_ewma_span = trial.suggest_int("short_ewma_span", 10, 50)
+        long_ewma_span = trial.suggest_int("long_ewma_span", 50, 200)
+        rolling_window = trial.suggest_int("rolling_window", 30, 100)
+        
+        # Suggest Z-score thresholds - only use global thresholds
+        zscore_upper_threshold = trial.suggest_float("zscore_upper_threshold", 0.5, 3.0, step=0.1)
+        zscore_lower_threshold = -trial.suggest_float("zscore_lower_threshold", 0.5, 3.0, step=0.1)
+        
+        # Suggest trade size parameter
+        trade_size = trial.suggest_int("trade_size", 5, 30)
+        
+        # Create a suggested params structure for our strategy
+        suggested_volatility_params = {
+            "short_ewma_span": short_ewma_span,
+            "long_ewma_span": long_ewma_span,
+            "rolling_window": rolling_window,
+            "zscore_upper_threshold": zscore_upper_threshold,
+            "zscore_lower_threshold": zscore_lower_threshold,
+            "trade_size": trade_size,
+            "day": 1  # Set day to 1 for optimization
+        }
     else:
         raise ValueError(f"Invalid target_product specified for optimization: {target_product}")
 
@@ -412,7 +451,7 @@ def objective(trial: optuna.Trial, target_product: str):
     datamodel_dest_path = os.path.join(TEMP_DIR, "datamodel.py")
     
     try:
-        strategy_dir = os.path.dirname(ORIGINAL_STRATEGY_PATH)
+        strategy_dir = os.path.dirname(DEFAULT_STRATEGY_PATH)
         potential_dm_path_strat = os.path.join(strategy_dir, "datamodel.py")
         project_root = os.path.abspath(os.path.join(strategy_dir, '..', '..')) # Adjust levels if needed
         potential_dm_path_root = os.path.join(project_root, "datamodel.py")
@@ -449,18 +488,31 @@ def objective(trial: optuna.Trial, target_product: str):
     debug_file_operations("Temp directory check", temp_dir_abs)
 
     # 3. Modify Strategy File
-    try:
-        modified = modify_strategy_params(ORIGINAL_STRATEGY_PATH, temp_strategy_path, suggested_base_params, suggested_arb_params)
-        if not modified:
-            print(f"Trial {trial_id}: Failed to modify strategy file. Pruning.")
-            if os.path.exists(temp_strategy_path):
-                try: os.remove(temp_strategy_path)
-                except OSError: pass
+    if target_product == "VOLATILITY_SMILE":
+        # For VOLATILITY_SMILE, directly copy the original file first, then modify
+        try:
+            # Make sure target directory exists
+            os.makedirs(os.path.dirname(temp_strategy_path), exist_ok=True)
+            # Copy the file
+            shutil.copy2(DEFAULT_STRATEGY_PATH, temp_strategy_path)
+            print(f"Copied original strategy to {temp_strategy_path}")
+        except Exception as e:
+            print(f"Error copying strategy file to temp location: {e}")
             raise optuna.TrialPruned()
-    except Exception as e:
-        print(f"Trial {trial_id}: Exception modifying strategy file: {e}")
-        traceback.print_exc()
-        raise optuna.TrialPruned()
+    else:
+        # For other target products, use the standard modify_strategy_params function
+        try:
+            modified = modify_strategy_params(DEFAULT_STRATEGY_PATH, temp_strategy_path, suggested_base_params, suggested_arb_params)
+            if not modified:
+                print(f"Trial {trial_id}: Failed to modify strategy file. Pruning.")
+                if os.path.exists(temp_strategy_path):
+                    try: os.remove(temp_strategy_path)
+                    except OSError: pass
+                raise optuna.TrialPruned()
+        except Exception as e:
+            print(f"Trial {trial_id}: Exception modifying strategy file: {e}")
+            traceback.print_exc()
+            raise optuna.TrialPruned()
 
     # Verify the temp file exists before proceeding
     debug_file_operations("Checking strategy file before running backtester", temp_strategy_path)
@@ -475,8 +527,77 @@ def objective(trial: optuna.Trial, target_product: str):
         print(f"\nTrial {trial_id}: Testing Params -> SQUID_INK: {suggested_base_params.get(Product.SQUID_INK, 'N/A')}")
     elif target_product == Product.VOLCANIC_ROCK and suggested_base_params:
         print(f"\nTrial {trial_id}: Testing Params -> VOLCANIC_ROCK: {suggested_base_params.get(Product.VOLCANIC_ROCK, 'N/A')}")
+    elif target_product == "VOLATILITY_SMILE":
+        print(f"\nTrial {trial_id}: Testing Params -> VOLATILITY_SMILE: {suggested_volatility_params}")
     else:
         print(f"\nTrial {trial_id}: Testing Params -> {target_product}: (Using Base Params)")
+
+    # Modify the strategy file with the suggested volatility smile parameters
+    if target_product == "VOLATILITY_SMILE":
+        try:
+            with open(temp_strategy_path, 'r') as f:
+                strategy_content = f.read()
+            
+            # Replace the parameters in the VolatilitySmileTrader class
+            modified_content = strategy_content
+            
+            # Update short_ewma_span
+            modified_content = re.sub(
+                r'self\.short_ewma_span\s*=\s*\d+',
+                f'self.short_ewma_span = {suggested_volatility_params["short_ewma_span"]}',
+                modified_content
+            )
+            
+            # Update long_ewma_span
+            modified_content = re.sub(
+                r'self\.long_ewma_span\s*=\s*\d+',
+                f'self.long_ewma_span = {suggested_volatility_params["long_ewma_span"]}',
+                modified_content
+            )
+            
+            # Update rolling_window
+            modified_content = re.sub(
+                r'self\.rolling_window\s*=\s*\d+',
+                f'self.rolling_window = {suggested_volatility_params["rolling_window"]}',
+                modified_content
+            )
+            
+            # Update zscore_upper_threshold
+            modified_content = re.sub(
+                r'self\.zscore_upper_threshold\s*=\s*\d+\.?\d*',
+                f'self.zscore_upper_threshold = {suggested_volatility_params["zscore_upper_threshold"]}',
+                modified_content
+            )
+            
+            # Update zscore_lower_threshold
+            modified_content = re.sub(
+                r'self\.zscore_lower_threshold\s*=\s*-\d+\.?\d*',
+                f'self.zscore_lower_threshold = {suggested_volatility_params["zscore_lower_threshold"]}',
+                modified_content
+            )
+            
+            # Update trade_size
+            modified_content = re.sub(
+                r'self\.trade_size\s*=\s*\d+',
+                f'self.trade_size = {suggested_volatility_params["trade_size"]}',
+                modified_content
+            )
+            
+            # Update day parameter
+            modified_content = re.sub(
+                r'self\.day\s*=\s*\d+',
+                f'self.day = {suggested_volatility_params["day"]}',
+                modified_content
+            )
+            
+            # Write the modified content back to the temp file
+            with open(temp_strategy_path, 'w') as f:
+                f.write(modified_content)
+            
+            print(f"Trial {trial_id}: Successfully modified volatility smile parameters.")
+        except Exception as e:
+            print(f"Trial {trial_id}: Error modifying volatility smile parameters: {e}")
+            raise optuna.TrialPruned()
 
     # 4. Run Backtester
     # For the file operations, use the absolute path to ensure correct copying
@@ -498,7 +619,7 @@ def objective(trial: optuna.Trial, target_product: str):
     backtester_command_parts = ["python", "-m", BACKTESTER_SCRIPT_PATH] if not BACKTESTER_SCRIPT_PATH.endswith(".py") else ["python", BACKTESTER_SCRIPT_PATH]
     
     # Construct and run the backtester command with the simple path
-    backtest_command = backtester_command_parts + [backtester_path, "3", "--match-trades", "worse", "--no-out"]
+    backtest_command = backtester_command_parts + [backtester_path, "3-2", "--match-trades", "worse", "--no-out"]
     
     
     print(f"Trial {trial_id}: Running backtest -> {' '.join(backtest_command)}")
@@ -591,170 +712,233 @@ if __name__ == "__main__":
                         required=True,
                         choices=[Product.SQUID_INK, Product.VOLCANIC_ROCK, "B1B2_DEVIATION", "VOLATILITY_SMILE"],
                         help='The product/strategy to optimize (e.g., SQUID_INK, VOLCANIC_ROCK, B1B2_DEVIATION, VOLATILITY_SMILE)')
+    parser.add_argument('--strategy-file',
+                        type=str,
+                        default=DEFAULT_STRATEGY_PATH,
+                        help=f'Path to the strategy file to optimize (default: {DEFAULT_STRATEGY_PATH})')
     args = parser.parse_args()
     target_product = args.product
+    
+    # Update the strategy path based on command line argument - avoid global
+    # Directly modify the module-level variable
+    import sys
+    current_module = sys.modules[__name__]
+    setattr(current_module, 'DEFAULT_STRATEGY_PATH', args.strategy_file)
+    print(f"Using strategy file: {DEFAULT_STRATEGY_PATH}")
+    
     # --- End Argument Parsing ---
 
     # --- Dynamic Study Name ---
     study_suffix = target_product
-    STUDY_NAME = f"r3_omer1_opt_{study_suffix}" # Reflects the script being optimized
+    strategy_filename = os.path.basename(DEFAULT_STRATEGY_PATH).replace('.py', '')
+    STUDY_NAME = f"{strategy_filename}_{target_product}_opt" # Reflects the script being optimized
     print(f"Target Product/Strategy: {target_product}")
     print(f"Study Name: {STUDY_NAME}")
     # --- End Dynamic Study Name ---
 
-    print(f"Starting Optuna optimization for {target_product} in {ORIGINAL_STRATEGY_PATH} (evaluated on R3 data)...")
+    print(f"Starting Optuna optimization for {target_product} in {DEFAULT_STRATEGY_PATH} (evaluated on R3 data)...")
     storage_name = f"sqlite:///{STUDY_NAME}.db"
     pruner = optuna.pruners.MedianPruner(n_startup_trials=10, n_warmup_steps=5, interval_steps=1)
-    study = optuna.create_study(study_name=STUDY_NAME, storage=storage_name, direction="maximize", load_if_exists=True, pruner=pruner)
-
+    
     try:
-        objective_partial = functools.partial(objective, target_product=target_product)
-        study.optimize(objective_partial, n_trials=N_TRIALS, timeout=None, n_jobs=1)
+        # Set up parallel optimization if TPE sampler is used
+        study = optuna.create_study(
+            storage=storage_name,
+            study_name=STUDY_NAME,
+            direction="maximize",
+            load_if_exists=True,
+            pruner=pruner,
+            sampler=optuna.samplers.TPESampler(multivariate=True, seed=42)
+        )
+        
+        # Define objective that depends on target_product
+        objective_with_target = functools.partial(objective, target_product=target_product)
+        
+        # Optimize with configured trials
+        study.optimize(objective_with_target, n_trials=N_TRIALS, timeout=None, show_progress_bar=True)
+        
+        # After optimization completes, display the best parameters
+        print(f"\n--- Optimization completed. ---")
+        print(f"Number of completed trials: {len(study.trials)}")
+        print(f"Best trial: {study.best_trial.number}")
+        print(f"Best value (PnL): {study.best_value:.2f}")
     except KeyboardInterrupt:
-        print("Optimization stopped manually.")
+        print("Optimization stopped manually. Displaying results from trials completed so far...")
     except Exception as e:
-        print(f"An error occurred during optimization: {e}"); import traceback; traceback.print_exc()
-
-    # --- Results Display ---
-    print("\nOptimization Finished!")
-    print(f"Study statistics: ")
-    print(f"  Number of finished trials: {len(study.trials)}")
-
+        print(f"An error occurred during optimization: {e}")
+        import traceback
+        traceback.print_exc()
+        print("Attempting to display results from trials completed so far...")
+    
+    # Display results regardless of how optimization ended
     try:
-        completed_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
-        if not completed_trials:
-            print("  No trials completed successfully.")
-        else:
-            print(f"  Best trial:")
-            trial = study.best_trial
-            print(f"    Value (Max PnL): {trial.value:.2f}")
-            print(f"    Params (Optimized for {target_product}): ")
-
-            # Extract the best parameters for the target product/strategy
-            best_params_target_only = {}
-            best_full_params = copy.deepcopy(BASE_PARAMS) # For individual strategies like SQUID, VOLCANIC_ROCK
-            best_full_arb_params = copy.deepcopy(BASE_ARB_PARAMS) # For arbitrage
-
-            # Define param maps
-            param_map_squid = {
+        # Get the best trial and extract params
+        trial = study.best_trial
+        print(f"Best parameters found for {target_product}:")
+        
+        # Get the base params structure to build on top of
+        best_full_params = copy.deepcopy(BASE_PARAMS)
+        best_full_arb_params = copy.deepcopy(BASE_ARB_PARAMS)
+        
+        # Dictionary mapping optuna parameter names to strategy parameter names
+        # This will vary by target_product, set a sensible default first
+        best_params_target_only = {}
+        
+        if target_product == "VOLATILITY_SMILE":
+            param_map = {
+                "short_ewma_span": "short_ewma_span",
+                "long_ewma_span": "long_ewma_span",
+                "rolling_window": "rolling_window",
+                "zscore_upper_threshold": "zscore_upper_threshold",
+                "zscore_lower_threshold": "zscore_lower_threshold",
+                "trade_size": "trade_size"
+            }
+            target_dict_to_update = {}
+            dict_name = "VOLATILITY_PARAMS"
+        elif target_product == Product.SQUID_INK:
+            param_map = {
                 "rsi_window": "rsi_window",
                 "rsi_overbought": "rsi_overbought",
-                "rsi_oversold": "rsi_oversold",
+                "rsi_oversold": "rsi_oversold"
             }
-            
-            param_map_volcanic_rock = {
+            target_dict_to_update = best_full_params.get(Product.SQUID_INK, {})
+            dict_name = "PARAMS"
+        elif target_product == Product.VOLCANIC_ROCK:
+            param_map = {
                 "rsi_window": "rsi_window",
                 "rsi_overbought": "rsi_overbought",
-                "rsi_oversold": "rsi_oversold",
+                "rsi_oversold": "rsi_oversold"
             }
-            
-            param_map_b1b2_deviation = {
+            target_dict_to_update = best_full_params.get(Product.VOLCANIC_ROCK, {})
+            dict_name = "PARAMS"
+        elif target_product == "B1B2_DEVIATION":
+            param_map = {
                 "diff_threshold_b1": "diff_threshold_b1",
-                "diff_threshold_b2": "diff_threshold_b2",
+                "diff_threshold_b2": "diff_threshold_b2", 
                 "diff_threshold_b1_b2": "diff_threshold_b1_b2",
                 "close_threshold_b1_b2": "close_threshold_b1_b2",
-                "max_arb_lot": "max_arb_lot",
+                "max_arb_lot": "max_arb_lot"
             }
+            target_dict_to_update = best_full_arb_params
+            dict_name = "ARB_PARAMS"
+        else:
+            print(f"Warning: Unsupported target product for mapping: {target_product}")
+            param_map = {}
+            current_param_map = {}
+            target_dict_to_update = {}
+            dict_to_print = {}
+            dict_name = "UNKNOWN"
 
-            # Select the correct map and target dictionary
-            if target_product == Product.SQUID_INK:
-                current_param_map = param_map_squid
-                target_dict_to_update = best_full_params.get(Product.SQUID_INK, {})
-                dict_to_print = best_full_params # Print full PARAMS dict
-                dict_name = "PARAMS"
-            elif target_product == Product.VOLCANIC_ROCK:
-                current_param_map = param_map_volcanic_rock
-                target_dict_to_update = best_full_params.get(Product.VOLCANIC_ROCK, {})
-                dict_to_print = best_full_params # Print full PARAMS dict
-                dict_name = "PARAMS"
-            elif target_product == "B1B2_DEVIATION":
-                current_param_map = param_map_b1b2_deviation
-                target_dict_to_update = best_full_arb_params # Update the arb dict directly
-                dict_to_print = best_full_arb_params # Print full ARB_PARAMS dict
-                dict_name = "ARB_PARAMS"
+        # Populate best_params_target_only using the map
+        for optuna_key, param_key in param_map.items():
+            if optuna_key in trial.params:
+                 best_params_target_only[param_key] = trial.params[optuna_key]
+
+        print(f"      {target_product}: {best_params_target_only}")
+
+        # Update the *correct* full dictionary with the best target params
+        if target_product == "B1B2_DEVIATION":
+            best_full_arb_params.update(best_params_target_only)
+            # Update dict_to_print for final output
+            dict_to_print = best_full_arb_params
+        elif target_product == Product.SQUID_INK:
+            if Product.SQUID_INK in best_full_params and isinstance(best_full_params[Product.SQUID_INK], dict):
+                 best_full_params[Product.SQUID_INK].update(best_params_target_only)
+                 # Update dict_to_print for final output
+                 dict_to_print = best_full_params
             else:
-                current_param_map = {}
-                target_dict_to_update = {}
-                dict_to_print = {}
-                dict_name = "UNKNOWN"
-
-            # Populate best_params_target_only using the map
-            for optuna_key, param_key in current_param_map.items():
-                if optuna_key in trial.params:
-                     best_params_target_only[param_key] = trial.params[optuna_key]
-
-            print(f"      {target_product}: {best_params_target_only}")
-
-            # Update the *correct* full dictionary with the best target params
-            if target_product == "B1B2_DEVIATION":
-                best_full_arb_params.update(best_params_target_only)
-                # Update dict_to_print for final output
-                dict_to_print = best_full_arb_params
-            elif target_product == Product.SQUID_INK:
-                if Product.SQUID_INK in best_full_params and isinstance(best_full_params[Product.SQUID_INK], dict):
-                     best_full_params[Product.SQUID_INK].update(best_params_target_only)
-                     # Update dict_to_print for final output
-                     dict_to_print = best_full_params
-                else:
-                     print(f"Warning: Cannot update best params for {target_product}, base structure incorrect.")
-            elif target_product == Product.VOLCANIC_ROCK:
-                if Product.VOLCANIC_ROCK in best_full_params and isinstance(best_full_params[Product.VOLCANIC_ROCK], dict):
-                     best_full_params[Product.VOLCANIC_ROCK].update(best_params_target_only)
-                     # Update dict_to_print for final output
-                     dict_to_print = best_full_params
-                else:
-                     print(f"Warning: Cannot update best params for {target_product}, base structure incorrect.")
+                 print(f"Warning: Cannot update best params for {target_product}, base structure incorrect.")
+        elif target_product == Product.VOLCANIC_ROCK:
+            if Product.VOLCANIC_ROCK in best_full_params and isinstance(best_full_params[Product.VOLCANIC_ROCK], dict):
+                 best_full_params[Product.VOLCANIC_ROCK].update(best_params_target_only)
+                 # Update dict_to_print for final output
+                 dict_to_print = best_full_params
             else:
-                print(f"Warning: Cannot update best params for {target_product}, base structure incorrect.")
+                 print(f"Warning: Cannot update best params for {target_product}, base structure incorrect.")
+        elif target_product == "VOLATILITY_SMILE":
+            # Create a clean representation of the best parameters for display
+            best_volatility_params = {
+                "short_ewma_span": trial.params.get("short_ewma_span"),
+                "long_ewma_span": trial.params.get("long_ewma_span"),
+                "rolling_window": trial.params.get("rolling_window"),
+                "zscore_upper_threshold": trial.params.get("zscore_upper_threshold"),
+                "zscore_lower_threshold": trial.params.get("zscore_lower_threshold"),
+                "trade_size": trial.params.get("trade_size"),
+                "day": 2
+            }
+            # Print the best parameters in a clean format
+            print("\n--- Best VOLATILITY_SMILE Parameters ---")
+            print(f"short_ewma_span: {best_volatility_params['short_ewma_span']}")
+            print(f"long_ewma_span: {best_volatility_params['long_ewma_span']}")
+            print(f"rolling_window: {best_volatility_params['rolling_window']}")
+            print(f"zscore_upper_threshold: {best_volatility_params['zscore_upper_threshold']}")
+            print(f"zscore_lower_threshold: {best_volatility_params['zscore_lower_threshold']}")
+            print(f"trade_size: {best_volatility_params['trade_size']}")
+            print(f"day: {best_volatility_params['day']}")
+            
+            print("\n--- Copy-Paste Version ---")
+            print("self.short_ewma_span = " + str(best_volatility_params['short_ewma_span']))
+            print("self.long_ewma_span = " + str(best_volatility_params['long_ewma_span']))
+            print("self.rolling_window = " + str(best_volatility_params['rolling_window']))
+            print("self.zscore_upper_threshold = " + str(best_volatility_params['zscore_upper_threshold']))
+            print("self.zscore_lower_threshold = " + str(best_volatility_params['zscore_lower_threshold']))
+            print("self.trade_size = " + str(best_volatility_params['trade_size']))
+            print("self.day = " + str(best_volatility_params['day']))
+            print("--- End VOLATILITY_SMILE Parameters ---")
+            
+            # Not updating dict_to_print for volatility smile since it uses a different structure
+            dict_to_print = {}
+        else:
+            print(f"Warning: Cannot update best params for {target_product}, base structure incorrect.")
 
-            # Generate the best dictionary string
-            print(f"\n--- Best {dict_name} dictionary for {os.path.basename(ORIGINAL_STRATEGY_PATH)} --- ")
+        # Generate the best dictionary string
+        print(f"\n--- Best {dict_name} dictionary for {os.path.basename(DEFAULT_STRATEGY_PATH)} --- ")
 
-            formatted_lines_best = [f"{dict_name} = {{\n"]
-            if dict_name == "PARAMS":
-                 params_for_json_best = {}
-                 # Ensure all relevant keys are present in the final dict_to_print
-                 # Add keys from BASE_PARAMS
-                 for key, value in BASE_PARAMS.items():
-                     if key not in dict_to_print: dict_to_print[key] = value
+        formatted_lines_best = [f"{dict_name} = {{\n"]
+        if dict_name == "PARAMS":
+             params_for_json_best = {}
+             # Ensure all relevant keys are present in the final dict_to_print
+             # Add keys from BASE_PARAMS
+             for key, value in BASE_PARAMS.items():
+                 if key not in dict_to_print: dict_to_print[key] = value
 
-                 for key, value in dict_to_print.items():
-                     # Reuse key formatting - needs robust handling for Product keys vs String keys
-                     key_str = repr(key) # Fallback
-                     if key == Product.SQUID_INK: key_str = 'Product.SQUID_INK'
-                     elif key == Product.VOLCANIC_ROCK: key_str = 'Product.VOLCANIC_ROCK'
-                     elif key == Product.B1B2_DEVIATION: key_str = 'Product.B1B2_DEVIATION'
-                     elif isinstance(key, str) and key.startswith("Product."): key_str = key # Handle Product.<n> case
+             for key, value in dict_to_print.items():
+                 # Reuse key formatting - needs robust handling for Product keys vs String keys
+                 key_str = repr(key) # Fallback
+                 if key == Product.SQUID_INK: key_str = 'Product.SQUID_INK'
+                 elif key == Product.VOLCANIC_ROCK: key_str = 'Product.VOLCANIC_ROCK'
+                 elif key == Product.B1B2_DEVIATION: key_str = 'Product.B1B2_DEVIATION'
+                 elif isinstance(key, str) and key.startswith("Product."): key_str = key # Handle Product.<n> case
 
-                     params_for_json_best[key_str] = value
+                 params_for_json_best[key_str] = value
 
-                 param_items_best = list(params_for_json_best.items())
-                 for i, (key_str, value_dict) in enumerate(param_items_best):
-                    if not isinstance(value_dict, dict): continue
-                    formatted_lines_best.append(f"    {key_str}: {{\n")
-                    value_items_best = list(value_dict.items())
-                    for j, (param_name, param_value) in enumerate(value_items_best):
-                        try: value_repr = repr(param_value)
-                        except TypeError: value_repr = repr(param_value)
-                        formatted_lines_best.append(f'        "{param_name}": {value_repr}')
-                        if j < len(value_items_best) - 1: formatted_lines_best.append(",\n")
-                        else: formatted_lines_best.append("\n")
-                    formatted_lines_best.append("    }")
-                    if i < len(param_items_best) - 1: formatted_lines_best.append(",\n")
+             param_items_best = list(params_for_json_best.items())
+             for i, (key_str, value_dict) in enumerate(param_items_best):
+                if not isinstance(value_dict, dict): continue
+                formatted_lines_best.append(f"    {key_str}: {{\n")
+                value_items_best = list(value_dict.items())
+                for j, (param_name, param_value) in enumerate(value_items_best):
+                    try: value_repr = repr(param_value)
+                    except TypeError: value_repr = repr(param_value)
+                    formatted_lines_best.append(f'        "{param_name}": {value_repr}')
+                    if j < len(value_items_best) - 1: formatted_lines_best.append(",\n")
                     else: formatted_lines_best.append("\n")
+                formatted_lines_best.append("    }")
+                if i < len(param_items_best) - 1: formatted_lines_best.append(",\n")
+                else: formatted_lines_best.append("\n")
 
-            elif dict_name == "ARB_PARAMS":
-                 arb_items_best = list(dict_to_print.items())
-                 for i, (key, value) in enumerate(arb_items_best):
-                    key_repr = f'"{key}"'
-                    value_repr = json.dumps(value)
-                    formatted_lines_best.append(f"    {key_repr}: {value_repr}")
-                    if i < len(arb_items_best) - 1: formatted_lines_best.append(",\n")
-                    else: formatted_lines_best.append("\n")
+        elif dict_name == "ARB_PARAMS":
+             arb_items_best = list(dict_to_print.items())
+             for i, (key, value) in enumerate(arb_items_best):
+                key_repr = f'"{key}"'
+                value_repr = json.dumps(value)
+                formatted_lines_best.append(f"    {key_repr}: {value_repr}")
+                if i < len(arb_items_best) - 1: formatted_lines_best.append(",\n")
+                else: formatted_lines_best.append("\n")
 
-            formatted_lines_best.append("}\n")
-            print("".join(formatted_lines_best))
-            print(f"--- End Best {dict_name} --- ")
+        formatted_lines_best.append("}\n")
+        print("".join(formatted_lines_best))
+        print(f"--- End Best {dict_name} --- ")
 
     except ValueError as e:
          print(f"  Best trial not available (perhaps all trials failed or were pruned): {e}")

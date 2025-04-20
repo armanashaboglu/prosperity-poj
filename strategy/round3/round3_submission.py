@@ -170,7 +170,7 @@ PARAMS = {
         "price_offset": 0
     },
     Product.B1B2_DEVIATION: {
-        "deviation_mean": 18.52, # From notebook analysis (or optimize)
+        "deviation_mean": 0, # From notebook analysis (or optimize)
         "deviation_std_window": 97, # Rolling window for std dev calc
         "zscore_threshold_entry": 11.5, # Z-score to enter
         "zscore_threshold_exit": 0.1, # Z-score to exit towards mean
@@ -261,15 +261,15 @@ class VolatilitySmileStrategy:
         ]
         
         # Strategy parameters for base IV mean reversion
-        self.short_ewma_span = 37  # First level EWMA span for Base IV
-        self.long_ewma_span = 68  # Second level EWMA span for double EWMA
-        self.rolling_window = 48   # Window for rolling standard deviation
+        self.short_ewma_span = 10  # First level EWMA span for Base IV
+        self.long_ewma_span = 51  # Second level EWMA span for double EWMA
+        self.rolling_window = 30   # Window for rolling standard deviation
         
         # Z-score thresholds for trading signals
         self.zscore_upper_threshold = 0.5  # Z-score threshold for sell signals
         self.zscore_lower_threshold = -2.8  # Z-score threshold for buy signals
         
-        self.trade_size = 22
+        self.trade_size = 11
         
         self.base_iv_history = deque(maxlen=200)
         

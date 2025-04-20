@@ -244,9 +244,9 @@ class Product:
 PARAMS = {
     "SQUID_INK": {
         
-        "rsi_window": 106,           # Lookback period for RSI
-        "rsi_overbought": 52,     # RSI level considered overbought
-        "rsi_oversold": 41,       # RSI level considered oversold
+        "rsi_window": 32,           # Lookback period for RSI
+        "rsi_overbought": 73,     # RSI level considered overbought
+        "rsi_oversold": 38,       # RSI level considered oversold
         
     },
     "RAINFOREST_RESIN": { # Params for V3 Resin Strategy
