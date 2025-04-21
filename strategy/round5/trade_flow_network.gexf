@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<gexf xmlns="http://www.gexf.net/1.2draft" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd" version="1.2">
+  <meta lastmodifieddate="2025-04-21">
+    <creator>NetworkX 3.3</creator>
+  </meta>
+  <graph defaultedgetype="directed" mode="static" name="">
+    <attributes mode="static" class="node">
+      <attribute id="0" title="total_volume" type="long" />
+    </attributes>
+    <nodes>
+      <node id="Caesar" label="Caesar">
+        <attvalues>
+          <attvalue for="0" value="187851" />
+        </attvalues>
+      </node>
+      <node id="Paris" label="Paris">
+        <attvalues>
+          <attvalue for="0" value="61496" />
+        </attvalues>
+      </node>
+      <node id="Charlie" label="Charlie">
+        <attvalues>
+          <attvalue for="0" value="60689" />
+        </attvalues>
+      </node>
+      <node id="Gina" label="Gina">
+        <attvalues>
+          <attvalue for="0" value="7151" />
+        </attvalues>
+      </node>
+      <node id="Gary" label="Gary">
+        <attvalues>
+          <attvalue for="0" value="13066" />
+        </attvalues>
+      </node>
+      <node id="Pablo" label="Pablo">
+        <attvalues>
+          <attvalue for="0" value="36901" />
+        </attvalues>
+      </node>
+      <node id="Camilla" label="Camilla">
+        <attvalues>
+          <attvalue for="0" value="173138" />
+        </attvalues>
+      </node>
+      <node id="Penelope" label="Penelope">
+        <attvalues>
+          <attvalue for="0" value="58683" />
+        </attvalues>
+      </node>
+      <node id="Peter" label="Peter">
+        <attvalues>
+          <attvalue for="0" value="3072" />
+        </attvalues>
+      </node>
+      <node id="Olivia" label="Olivia">
+        <attvalues>
+          <attvalue for="0" value="198" />
+        </attvalues>
+      </node>
+      <node id="Olga" label="Olga">
+        <attvalues>
+          <attvalue for="0" value="9" />
+        </attvalues>
+      </node>
+    </nodes>
+    <edges>
+      <edge source="Caesar" target="Paris" id="0" weight="23217" />
+      <edge source="Caesar" target="Caesar" id="1" weight="11992" />
+      <edge source="Caesar" target="Peter" id="2" weight="1633" />
+      <edge source="Caesar" target="Camilla" id="3" weight="14538" />
+      <edge source="Caesar" target="Pablo" id="4" weight="2063" />
+      <edge source="Caesar" target="Penelope" id="5" weight="1903" />
+      <edge source="Caesar" target="Gary" id="6" weight="74" />
+      <edge source="Caesar" target="Olivia" id="7" weight="9" />
+      <edge source="Caesar" target="Gina" id="8" weight="297" />
+      <edge source="Paris" target="Caesar" id="9" weight="20147" />
+      <edge source="Paris" target="Charlie" id="10" weight="7099" />
+      <edge source="Paris" target="Camilla" id="11" weight="1521" />
+      <edge source="Paris" target="Pablo" id="12" weight="254" />
+      <edge source="Paris" target="Penelope" id="13" weight="81" />
+      <edge source="Paris" target="Paris" id="14" weight="292" />
+      <edge source="Paris" target="Gina" id="15" weight="74" />
+      <edge source="Paris" target="Gary" id="16" weight="62" />
+      <edge source="Paris" target="Olivia" id="17" weight="1" />
+      <edge source="Charlie" target="Paris" id="18" weight="6614" />
+      <edge source="Charlie" target="Gina" id="19" weight="3957" />
+      <edge source="Charlie" target="Gary" id="20" weight="5834" />
+      <edge source="Charlie" target="Pablo" id="21" weight="5934" />
+      <edge source="Charlie" target="Camilla" id="22" weight="128" />
+      <edge source="Charlie" target="Penelope" id="23" weight="9257" />
+      <edge source="Charlie" target="Caesar" id="24" weight="1898" />
+      <edge source="Charlie" target="Olivia" id="25" weight="89" />
+      <edge source="Gina" target="Charlie" id="26" weight="1114" />
+      <edge source="Gina" target="Camilla" id="27" weight="407" />
+      <edge source="Gina" target="Caesar" id="28" weight="275" />
+      <edge source="Gina" target="Paris" id="29" weight="77" />
+      <edge source="Gina" target="Gary" id="30" weight="33" />
+      <edge source="Gina" target="Penelope" id="31" weight="125" />
+      <edge source="Gina" target="Pablo" id="32" weight="88" />
+      <edge source="Gary" target="Charlie" id="33" weight="5972" />
+      <edge source="Gary" target="Camilla" id="34" weight="451" />
+      <edge source="Gary" target="Pablo" id="35" weight="55" />
+      <edge source="Gary" target="Caesar" id="36" weight="101" />
+      <edge source="Gary" target="Paris" id="37" weight="31" />
+      <edge source="Gary" target="Gina" id="38" weight="50" />
+      <edge source="Gary" target="Olga" id="39" weight="9" />
+      <edge source="Gary" target="Penelope" id="40" weight="16" />
+      <edge source="Pablo" target="Camilla" id="41" weight="1879" />
+      <edge source="Pablo" target="Paris" id="42" weight="274" />
+      <edge source="Pablo" target="Caesar" id="43" weight="1390" />
+      <edge source="Pablo" target="Charlie" id="44" weight="2790" />
+      <edge source="Pablo" target="Penelope" id="45" weight="186" />
+      <edge source="Pablo" target="Gina" id="46" weight="101" />
+      <edge source="Pablo" target="Gary" id="47" weight="49" />
+      <edge source="Pablo" target="Pablo" id="48" weight="81" />
+      <edge source="Camilla" target="Paris" id="49" weight="1415" />
+      <edge source="Camilla" target="Caesar" id="50" weight="93372" />
+      <edge source="Camilla" target="Pablo" id="51" weight="21595" />
+      <edge source="Camilla" target="Camilla" id="52" weight="769" />
+      <edge source="Camilla" target="Penelope" id="53" weight="18323" />
+      <edge source="Camilla" target="Gina" id="54" weight="472" />
+      <edge source="Camilla" target="Gary" id="55" weight="329" />
+      <edge source="Penelope" target="Charlie" id="56" weight="9915" />
+      <edge source="Penelope" target="Camilla" id="57" weight="17170" />
+      <edge source="Penelope" target="Caesar" id="58" weight="1500" />
+      <edge source="Penelope" target="Paris" id="59" weight="45" />
+      <edge source="Penelope" target="Pablo" id="60" weight="81" />
+      <edge source="Penelope" target="Gina" id="61" weight="81" />
+      <edge source="Peter" target="Caesar" id="62" weight="1439" />
+      <edge source="Olivia" target="Charlie" id="63" weight="88" />
+      <edge source="Olivia" target="Caesar" id="64" weight="11" />
+    </edges>
+  </graph>
+</gexf>

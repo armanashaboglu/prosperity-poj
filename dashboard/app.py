@@ -10,8 +10,8 @@ from .log_parser import parse_log_file # Use relative import
 from .historical_data_loader import load_historical_data # Added import for historical data
 
 # --- Configuration ---
-LOG_FILE_PATH = 'C:/Users/Admin/Downloads/292eeffd-3854-4b8d-bfe0-60706a6c894d_final.log' # Or make this configurable
-HISTORICAL_DATA_DIR = 'C:/Users/Admin/projects/prosperity-poj/strategy/round4/resources/round4' # Added path for historical data
+LOG_FILE_PATH = '/Users/omersen/prosperity-poj/dashboard/1dea0e49-af48-4ade-b6d7-f8bc1a152dd2.log' # Or make this configurable
+HISTORICAL_DATA_DIR = '/Users/omersen/prosperity-poj/strategy/round5/resources/round5' # Added path for historical data
 ROUND_4_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK", "CROISSANTS", "JAMS", "DJEMBES", "BASKET1", "BASKET2", "VOLCANIC_ROCK", "VOLCANIC_ROCK_VOUCHER_9500", "VOLCANIC_ROCK_VOUCHER_9750", "VOLCANIC_ROCK_VOUCHER_10000", "VOLCANIC_ROCK_VOUCHER_10250", "VOLCANIC_ROCK_VOUCHER_10500", "VOLCANIC_ROCK_VOUCHER_10750", "VOLCANIC_ROCK_VOUCHER_11000", "MAGNIFICENT_MACARONS"] # Added list of R1 products
 POSITION_LIMITS = { # Hardcode for now, 
     "KELP": 50,
