@@ -1,19 +1,19 @@
 import dash
 from dash import dcc, html, Input, Output, State, dash_table
-# from plotly_resampler import FigureResampler as go # Reverting this
-import plotly.graph_objects as go # Use standard go
+
+import plotly.graph_objects as go 
 import plotly.express as px
 import pandas as pd
 import json
-import os # Added import
+import os 
 from .log_parser import parse_log_file # Use relative import
 from .historical_data_loader import load_historical_data # Added import for historical data
 
 # --- Configuration ---
-LOG_FILE_PATH = 'C:/Users/Admin/Downloads/8979e4ef-51d7-452e-a75f-9e5b698d646e (1).log' # Or make this configurable
-HISTORICAL_DATA_DIR = 'C:/Users/Admin/projects/prosperity-poj/strategy/round3/resources/round3' # Added path for historical data
-ROUND_3_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK"] # Added list of R1 products
-POSITION_LIMITS = { # Hardcode for now, ideally load dynamically later
+LOG_FILE_PATH = '/Users/omersen/prosperity-poj/dashboard/1dea0e49-af48-4ade-b6d7-f8bc1a152dd2.log' # Or make this configurable
+HISTORICAL_DATA_DIR = '/Users/omersen/prosperity-poj/strategy/round5/resources/round5' # Added path for historical data
+ROUND_4_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK", "CROISSANTS", "JAMS", "DJEMBES", "BASKET1", "BASKET2", "VOLCANIC_ROCK", "VOLCANIC_ROCK_VOUCHER_9500", "VOLCANIC_ROCK_VOUCHER_9750", "VOLCANIC_ROCK_VOUCHER_10000", "VOLCANIC_ROCK_VOUCHER_10250", "VOLCANIC_ROCK_VOUCHER_10500", "VOLCANIC_ROCK_VOUCHER_10750", "VOLCANIC_ROCK_VOUCHER_11000", "MAGNIFICENT_MACARONS"] # Added list of R1 products
+POSITION_LIMITS = { # Hardcode for now, 
     "KELP": 50,
     "RAINFOREST_RESIN": 50,
     "SQUID_INK": 50,
@@ -22,7 +22,15 @@ POSITION_LIMITS = { # Hardcode for now, ideally load dynamically later
     "DJEMBES": 60,
     "BASKET1": 60,
     "BASKET2": 100,
-    
+    "VOLCANIC_ROCK": 400,
+    "VOLCANIC_ROCK_VOUCHER_9500": 200,
+    "VOLCANIC_ROCK_VOUCHER_9750": 200,
+    "VOLCANIC_ROCK_VOUCHER_10000": 200,
+    "VOLCANIC_ROCK_VOUCHER_10250": 200,
+    "VOLCANIC_ROCK_VOUCHER_10500": 200,
+    "VOLCANIC_ROCK_VOUCHER_10750": 200,
+    "VOLCANIC_ROCK_VOUCHER_11000": 200,
+    "MAGNIFICENT_MACARONS": 75
 }
 
 # --- Load and Prepare Data ---

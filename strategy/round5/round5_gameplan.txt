@@ -1,0 +1,95 @@
+ROUND 5 GAMEPLAN:
+
+Vouchers: We made very negative returns last round, so we are going to try a new strategy.
+
+Macarons: Dont trade, too risky.
+
+R2 Baskets: Only long/short baskets based on their deviation from theoretical value, and individual strat for compenets if we find any patterns.
+
+Squid Ink: Try to find parameters that are consistently profitable will ALL days (-2,-1,0,1,2,3,4)
+
+Todo:
+- Analyze R5 data and try to find profitable strategies for every product.
+- If we fail to find any profitable strategies, we will try to find parameters that are consistently profitable for all days( for SQUID_INK)
+- For vouchers, we will try these strategies:
+    -Strategy 1: Smile-Based Market Making
+        Core idea: Estimate fair prices using smile fit. Market make when quotes deviate.
+
+        How?
+        At each timestamp: Fit a parabola: IV vs log(strike / spot) using all 5 call options.
+
+        From that curve, calculate "fair IV" for each option.
+
+        Plug it into Black-Scholes to get fair price.
+
+        Compare to actual midprice:
+
+        If price is too high → sell
+
+        If price is too low → buy
+
+        Why this works: You're not betting on direction.
+
+        You exploit short-term distortions in illiquid options.
+
+        Keeps delta and gamma exposure low.
+
+        Optional enhancement:
+        Adjust your threshold tighter if smile is steepening.
+
+        Trade more aggressively when the spread is wide (e.g., IV residual > 1.5 std).
+
+    -Strategy 2: Vertical Spread on Skew Mean Reversion
+        Core idea: Smile gets too steep or too flat → it mean-reverts.
+
+        How?
+        Track slope between pairs: e.g., slope = (C(9750) – C(10000)) / (10000 – 9750)
+
+        Compute rolling mean + std
+
+        When slope > mean + X std:
+
+        Sell 9750 call, buy 10000 call
+
+        When slope < mean – X std:
+
+        Buy 9750, sell 10000
+
+        Why it works: Betting on relative pricing, not absolute levels
+
+        Skew tends to revert unless a trend regime shifts it sharply
+
+    -Strategy 3: Butterfly Spread on Smile Convexity
+        Core idea: Smile can be too "bendy" or too flat.
+
+        How? Buy low & high strike calls, sell 2 × ATM calls (e.g., Buy 9500 & 10000, Sell 2× 9750)
+
+        Only enter when smile curvature (second derivative) is unusually high or low.
+
+        When profitable: Smile mean reverts to its historical average convexity
+
+        Why this works: Minimally directional, Profits from shape, not level
+
+    -Strategy 4: Trade IV Residuals... Carefully
+        You tried this before — it’s not dead, it just needs structure.
+
+        Here's the fix: For each voucher, compute residual = IV_actual – IV_fitted
+
+        Take rolling mean + std
+
+        Only act if residual is z-score > ±2.5
+
+        High → Sell
+
+        Low → Buy
+
+        Problem before: You may have overtraded noise ,maybe too large size or ignored spread/slippage
+
+        Try with smaller sizes and exit at mean 
+
+    -Strategy 5 (Experimental): Volatility Smile "Twist" Detection
+        You can track: Slope of left side (e.g., 9500 to 9750). Slope of right side (e.g., 10250 to 10500)
+
+        If smile "twists" (e.g., only left side steepens), maybe buy/sell asymmetrical butterflies.
+- For round 2 products, we will only long/short baskets based on their deviation from theoretical value, and individual strat for compenets if we find any patterns.
+So we wont trade spread of spreads anymore.
