@@ -116,8 +116,8 @@ My goal was to develop profitable and robust trading algorithms by leveraging da
     *   Moved up to 230th globally. A manual scoring correction later improved this to 222nd globally (6th in NL).
     *   The success masked the underlying risks in the voucher and Volcanic Rock strategies.
 
-*   ![IV Residual Analysis](notebooks&analysis/9500_IV_Residual.png "Analysis showing IV Residual for 9500 strike")
-*   ![Base IV Analysis](notebooks&analysis/z-score of Base IV EWMA Difference.png "Analysis showing Base IV behavior")
+*   ![IV Residual Analysis](notebooks&analysis/9500.png "Analysis showing IV Residual for 9500 strike")
+*   ![Base IV Analysis](notebooks&analysis/baseivewma.png "Analysis showing Base IV behavior")
 
 ---
 
