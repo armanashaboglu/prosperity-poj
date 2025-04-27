@@ -1,5 +1,5 @@
-import json
-import numpy as np
+
+import numpy as np #type: ignore
 from typing import Any, Dict, List, Deque, Optional
 from abc import abstractmethod
 from collections import deque

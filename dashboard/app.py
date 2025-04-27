@@ -1,9 +1,9 @@
-import dash
-from dash import dcc, html, Input, Output, State, dash_table
+import dash # type: ignore
+from dash import dcc, html, Input, Output, State, dash_table # type: ignore
 
-import plotly.graph_objects as go 
-import plotly.express as px
-import pandas as pd
+import plotly.graph_objects as go  # type: ignore
+import plotly.express as px # type: ignore
+import pandas as pd # type: ignore
 import json
 import os 
 from .log_parser import parse_log_file # Use relative import
@@ -11,7 +11,7 @@ from .historical_data_loader import load_historical_data # Added import for hist
 
 # --- Configuration ---
 LOG_FILE_PATH = '/Users/omersen/prosperity-poj/dashboard/1dea0e49-af48-4ade-b6d7-f8bc1a152dd2.log' # Or make this configurable
-HISTORICAL_DATA_DIR = '/Users/omersen/prosperity-poj/strategy/round5/resources/round5' # Added path for historical data
+HISTORICAL_DATA_DIR = '/Users/omersen/prosperity-poj/strategy/round5/resources/all_data' # Added path for historical data
 ROUND_4_PRODUCTS = ["KELP", "RAINFOREST_RESIN", "SQUID_INK", "CROISSANTS", "JAMS", "DJEMBES", "BASKET1", "BASKET2", "VOLCANIC_ROCK", "VOLCANIC_ROCK_VOUCHER_9500", "VOLCANIC_ROCK_VOUCHER_9750", "VOLCANIC_ROCK_VOUCHER_10000", "VOLCANIC_ROCK_VOUCHER_10250", "VOLCANIC_ROCK_VOUCHER_10500", "VOLCANIC_ROCK_VOUCHER_10750", "VOLCANIC_ROCK_VOUCHER_11000", "MAGNIFICENT_MACARONS"] # Added list of R1 products
 POSITION_LIMITS = { # Hardcode for now, 
     "KELP": 50,
