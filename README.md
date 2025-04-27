@@ -1,6 +1,6 @@
 # IMC Prosperity 3 - Algorithmic Trading Strategies - Team POJ
 
-**Final Rank: 356th Global, 16th Netherlands**
+**Final Rank: 356th Global (20 000+ teams), 16th Netherlands**
 
 ## Overview
 
@@ -167,7 +167,7 @@ My goal was to develop profitable and robust trading algorithms by leveraging da
     *   However, disabling the Basket strategy and failing to disable the Volcanic Rock RSI strategy were significant errors.
     *   The algorithm barely broke even due to the -77k loss on Volcanic Rock offsetting gains elsewhere.
     *   Manual part profit was slightly above average.
-    *   Final Rank: 356th globally, 16th in the Netherlands.
+    *   Final Rank: 356th globally (out of 20 000+ teams), 16th in the Netherlands.
 
 *   ![Croissants Strategy Analysis](notebooks&analysis/OLIVIATHEGOAT1.png "Analysis showing Croissants strategy")
 *   ![Kelp Strategy Analysis](notebooks&analysis/oliviathegoat2.png "Analysis showing Kelp strategy")
